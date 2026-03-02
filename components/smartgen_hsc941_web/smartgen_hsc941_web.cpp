@@ -204,6 +204,22 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .ex-status{grid-column:1/-1;padding:10px;background:var(--surface);border-radius:8px;font-size:.78rem}
 .ex-status .ex-st-label{color:var(--dim);font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
 .ex-status .ex-st-value{font-weight:700;margin-left:6px}
+
+/* ── Relay Thermostat ── */
+.th-relay{background:var(--surface);border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid var(--border)}
+.th-relay.th-active{border-color:var(--blue)}
+.th-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.th-name{font-weight:700;font-size:.85rem}
+.th-reading{font-size:.78rem;padding:3px 8px;border-radius:4px;background:var(--card)}
+.th-reading.th-on{color:var(--green);font-weight:700}
+.th-reading.th-off{color:var(--dim)}
+.th-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:end}
+@media(max-width:600px){.th-fields{grid-template-columns:1fr}}
+.th-field{display:flex;flex-direction:column;gap:3px}
+.th-field label{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+.th-field select,.th-field input[type=number]{background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 9px;font-size:.8rem;font-family:inherit;outline:none;transition:border .2s}
+.th-field select:focus,.th-field input[type=number]:focus{border-color:var(--blue)}
+.th-field select option{background:var(--card);color:var(--text)}
 </style>
 </head>
 <body>
@@ -371,6 +387,19 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
      <span class="ex-st-label">Status:</span><span class="ex-st-value" id="exState">Idle</span>
      <span class="ex-st-label" style="margin-left:16px">Last Run:</span><span class="ex-st-value" id="exLastRun">Never</span>
     </div>
+   </div>
+  </div>
+ </div>
+</div>
+
+<!-- Relay Thermostat -->
+<div class="row r-full" id="thermostatSection" style="display:none">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg><h2>Relay Thermostat</h2></div>
+  <div class="card-body">
+   <div id="thermostatPanel"></div>
+   <div style="margin-top:12px;text-align:right">
+    <button class="ex-btn ex-btn-save" onclick="saveThermostat()">Save</button>
    </div>
   </div>
  </div>
@@ -720,9 +749,92 @@ function switchSec(id){
  if(tab)tab.classList.add('active');
 }
 
+/* ── Relay Thermostat ── */
+let thData=null;
+let thSensors=[];
+function loadThermostat(){
+ fetch('/api/thermostat').then(r=>r.json()).then(d=>{
+  thData=d.relays||[];
+  thSensors=d.sensors||[];
+  if(thData.length>0)document.getElementById('thermostatSection').style.display='';
+  renderThermostat();
+ }).catch(()=>{});
+}
+function renderThermostat(){
+ const p=document.getElementById('thermostatPanel');
+ if(!p||!thData)return;
+ let h='';
+ thData.forEach(r=>{
+  const active=r.enabled?'th-active':'';
+  const rdCls=r.relay_on?'th-on':'th-off';
+  const rdTxt=r.reading!=null?r.reading.toFixed(1)+'°':'--';
+  const relSt=r.relay_on?'ON':'OFF';
+  h+='<div class="th-relay '+active+'" data-idx="'+r.idx+'">';
+  h+='<div class="th-hdr"><span class="th-name"><label class="toggle" style="margin-right:8px"><input type="checkbox" class="th-en" data-idx="'+r.idx+'"'+(r.enabled?' checked':'')+' onchange="thToggle(this)"><span class="slider"></span></label>'+r.name+'</span>';
+  h+='<span class="th-reading '+rdCls+'">'+rdTxt+' ('+relSt+')</span></div>';
+  h+='<div class="th-fields">';
+  h+='<div class="th-field"><label>Sensor</label><select class="th-sensor" data-idx="'+r.idx+'">';
+  h+='<option value="">-- None --</option>';
+  thSensors.forEach(s=>{
+   h+='<option value="'+s.key+'"'+(r.sensor===s.key?' selected':'')+'>'+s.label+'</option>';
+  });
+  h+='</select></div>';
+  h+='<div class="th-field"><label>ON Below (°)</label><input type="number" class="th-on" data-idx="'+r.idx+'" step="0.5" value="'+r.on_below.toFixed(1)+'"></div>';
+  h+='<div class="th-field"><label>OFF Above (°)</label><input type="number" class="th-off" data-idx="'+r.idx+'" step="0.5" value="'+r.off_above.toFixed(1)+'"></div>';
+  h+='</div></div>';
+ });
+ p.innerHTML=h;
+}
+function thToggle(el){
+ const idx=parseInt(el.dataset.idx);
+ const item=thData.find(r=>r.idx===idx);
+ if(item)item.enabled=el.checked;
+ const card=el.closest('.th-relay');
+ if(card){if(el.checked)card.classList.add('th-active');else card.classList.remove('th-active');}
+}
+function pollThermostat(){
+ if(!thData||thData.length===0)return;
+ fetch('/api/thermostat').then(r=>r.json()).then(d=>{
+  const fresh=d.relays||[];
+  fresh.forEach(f=>{
+   const old=thData.find(r=>r.idx===f.idx);
+   if(old){old.reading=f.reading;old.relay_on=f.relay_on;}
+  });
+  // Update readings only
+  thData.forEach(r=>{
+   const card=document.querySelector('.th-relay[data-idx="'+r.idx+'"]');
+   if(!card)return;
+   const rd=card.querySelector('.th-reading');
+   if(rd){
+    rd.textContent=(r.reading!=null?r.reading.toFixed(1)+'°':'--')+' ('+(r.relay_on?'ON':'OFF')+')';
+    rd.className='th-reading '+(r.relay_on?'th-on':'th-off');
+   }
+  });
+ }).catch(()=>{});
+}
+function saveThermostat(){
+ const cfg=thData.map(r=>{
+  const el_en=document.querySelector('.th-en[data-idx="'+r.idx+'"]');
+  const el_s=document.querySelector('.th-sensor[data-idx="'+r.idx+'"]');
+  const el_on=document.querySelector('.th-on[data-idx="'+r.idx+'"]');
+  const el_off=document.querySelector('.th-off[data-idx="'+r.idx+'"]');
+  return {
+   idx:r.idx,
+   enabled:el_en?el_en.checked:false,
+   sensor:el_s?el_s.value:'',
+   on_below:el_on?parseFloat(el_on.value):5.0,
+   off_above:el_off?parseFloat(el_off.value):10.0
+  };
+ });
+ fetch('/api/thermostat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Thermostat config saved':'Save failed',d.ok?'ok':'err');loadThermostat();})
+ .catch(()=>toast('Communication error','err'));
+}
+
 /* ── Init ── */
 initGauges();initPanels();poll();setInterval(poll,2500);
 loadExercise();setInterval(pollExercise,3000);
+loadThermostat();setInterval(pollThermostat,5000);
 </script>
 </body>
 </html>)rawliteral";
@@ -734,12 +846,13 @@ loadExercise();setInterval(pollExercise,3000);
 void SmartgenHSC941Web::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SmartGen HSC941 Web UI...");
   this->load_exercise_config_();
+  this->load_thermostat_config_();
   this->start_server_();
 }
 
 void SmartgenHSC941Web::loop() {
-  // Check exercise schedule every 1 second
   uint32_t now = millis();
+  // Check exercise schedule every 1 second
   if (now - this->last_exercise_check_ >= 1000) {
     this->last_exercise_check_ = now;
     if (this->exercise_state_ != ExerciseState::IDLE) {
@@ -747,6 +860,11 @@ void SmartgenHSC941Web::loop() {
     } else {
       this->check_exercise_schedule_();
     }
+  }
+  // Check thermostat every 5 seconds
+  if (now - this->last_thermostat_check_ >= 5000) {
+    this->last_thermostat_check_ = now;
+    this->thermostat_step_();
   }
 }
 
@@ -829,6 +947,126 @@ void SmartgenHSC941Web::save_exercise_config_() {
   nvs_commit(handle);
   nvs_close(handle);
   ESP_LOGI(TAG, "Saved exercise config: %s", json);
+}
+
+// ============================================================
+//  Thermostat NVS persistence
+// ============================================================
+static const char *NVS_THERMO_NS = "genset_th";
+static const char *NVS_THERMO_KEY = "config";
+
+float SmartgenHSC941Web::get_sensor_value_by_key_(const std::string &key) const {
+  if (key == "water_temp" && this->controller_) {
+    auto *s = this->controller_->get_water_temp_sensor();
+    if (s && s->has_state()) return s->state;
+  } else if (key == "aux1" && this->controller_) {
+    auto *s = this->controller_->get_aux_sensor_1();
+    if (s && s->has_state()) return s->state;
+  } else if (key == "ambient_temp" && this->ambient_temp_) {
+    if (this->ambient_temp_->has_state()) return this->ambient_temp_->state;
+  }
+  return NAN;
+}
+
+void SmartgenHSC941Web::load_thermostat_config_() {
+  nvs_handle_t handle;
+  esp_err_t err = nvs_open(NVS_THERMO_NS, NVS_READONLY, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGD(TAG, "No thermostat config in NVS (first boot)");
+    return;
+  }
+  size_t len = 0;
+  err = nvs_get_str(handle, NVS_THERMO_KEY, nullptr, &len);
+  if (err == ESP_OK && len > 0) {
+    char *buf = new char[len];
+    nvs_get_str(handle, NVS_THERMO_KEY, buf, &len);
+    // Format: array of per-relay configs:
+    // [{"e":1,"s":"water_temp","on":5.0,"off":10.0}, ...]
+    const char *p = buf;
+    uint8_t idx = 0;
+    while (idx < MAX_RELAYS) {
+      const char *start = strchr(p, '{');
+      if (!start) break;
+      const char *end = strchr(start, '}');
+      if (!end) break;
+      this->relay_thermostats_[idx].enabled =
+          (strstr(start, "\"e\":1") != nullptr || strstr(start, "\"e\":true") != nullptr);
+      const char *sk = strstr(start, "\"s\":\"");
+      if (sk && sk < end) {
+        sk += 5;
+        const char *sq = strchr(sk, '"');
+        if (sq && sq < end) {
+          this->relay_thermostats_[idx].sensor_key = std::string(sk, sq - sk);
+        }
+      }
+      const char *onp = strstr(start, "\"on\":");
+      if (onp && onp < end) {
+        this->relay_thermostats_[idx].on_below = strtof(onp + 5, nullptr);
+      }
+      const char *offp = strstr(start, "\"off\":");
+      if (offp && offp < end) {
+        this->relay_thermostats_[idx].off_above = strtof(offp + 6, nullptr);
+      }
+      idx++;
+      p = end + 1;
+    }
+    delete[] buf;
+    ESP_LOGI(TAG, "Loaded thermostat config for %u relays", idx);
+  }
+  nvs_close(handle);
+}
+
+void SmartgenHSC941Web::save_thermostat_config_() {
+  nvs_handle_t handle;
+  esp_err_t err = nvs_open(NVS_THERMO_NS, NVS_READWRITE, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS for thermostat write: %s", esp_err_to_name(err));
+    return;
+  }
+  std::string json;
+  json.reserve(512);
+  json += '[';
+  for (uint8_t i = 0; i < MAX_RELAYS; i++) {
+    if (i > 0) json += ',';
+    const auto &t = this->relay_thermostats_[i];
+    json += "{\"e\":";
+    json += t.enabled ? "1" : "0";
+    json += ",\"s\":\"";
+    json += t.sensor_key;
+    json += "\",\"on\":";
+    char fbuf[16];
+    snprintf(fbuf, sizeof(fbuf), "%.1f", t.on_below);
+    json += fbuf;
+    json += ",\"off\":";
+    snprintf(fbuf, sizeof(fbuf), "%.1f", t.off_above);
+    json += fbuf;
+    json += '}';
+  }
+  json += ']';
+  nvs_set_str(handle, NVS_THERMO_KEY, json.c_str());
+  nvs_commit(handle);
+  nvs_close(handle);
+  ESP_LOGI(TAG, "Saved thermostat config");
+}
+
+void SmartgenHSC941Web::thermostat_step_() {
+  for (uint8_t i = 0; i < MAX_RELAYS; i++) {
+    const auto &t = this->relay_thermostats_[i];
+    if (!t.enabled || t.sensor_key.empty()) continue;
+    if (this->relays_[i].sw == nullptr) continue;
+
+    float val = this->get_sensor_value_by_key_(t.sensor_key);
+    if (std::isnan(val)) continue;
+
+    bool currently_on = this->relays_[i].sw->state;
+    if (!currently_on && val < t.on_below) {
+      this->relays_[i].sw->turn_on();
+      ESP_LOGI(TAG, "Thermostat: Relay %u ON (%.1f < %.1f)", i + 1, val, t.on_below);
+    } else if (currently_on && val > t.off_above) {
+      this->relays_[i].sw->turn_off();
+      ESP_LOGI(TAG, "Thermostat: Relay %u OFF (%.1f > %.1f)", i + 1, val, t.off_above);
+    }
+  }
 }
 
 // ============================================================
@@ -1086,7 +1324,7 @@ void SmartgenHSC941Web::start_server_() {
   config.server_port = this->port_;
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
-  config.max_uri_handlers = 7;
+  config.max_uri_handlers = 9;
   config.lru_purge_enable = true;
 
   esp_err_t err = httpd_start(&this->server_, &config);
@@ -1145,6 +1383,22 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &exercise_post_uri);
+
+  httpd_uri_t thermostat_get_uri = {
+      .uri = "/api/thermostat",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_thermostat_get_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &thermostat_get_uri);
+
+  httpd_uri_t thermostat_post_uri = {
+      .uri = "/api/thermostat",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_thermostat_post_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &thermostat_post_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -1455,6 +1709,156 @@ esp_err_t SmartgenHSC941Web::handle_api_exercise_post_(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *r = R"({"ok":true,"msg":"Config saved"})";
+  return httpd_resp_send(req, r, strlen(r));
+}
+
+// ============================================================
+//  Thermostat API handlers
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_api_thermostat_get_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  const auto &thermostats = self->get_thermostats();
+  const auto &relays = self->get_relays();
+
+  std::string json;
+  json.reserve(1024);
+  json += "{\"relays\":[";
+  bool first = true;
+  for (uint8_t i = 0; i < MAX_RELAYS; i++) {
+    if (relays[i].sw == nullptr) continue;
+    if (!first) json += ',';
+    first = false;
+    json += "{\"idx\":";
+    json += std::to_string(i);
+    json += ",\"name\":\"";
+    for (char c : relays[i].name) {
+      if (c == '"') json += "\\\"";
+      else if (c == '\\') json += "\\\\";
+      else json += c;
+    }
+    json += "\",\"enabled\":";
+    json += thermostats[i].enabled ? "true" : "false";
+    json += ",\"sensor\":\"";
+    json += thermostats[i].sensor_key;
+    json += "\",\"on_below\":";
+    char fbuf[16];
+    snprintf(fbuf, sizeof(fbuf), "%.1f", thermostats[i].on_below);
+    json += fbuf;
+    json += ",\"off_above\":";
+    snprintf(fbuf, sizeof(fbuf), "%.1f", thermostats[i].off_above);
+    json += fbuf;
+    // Include current sensor reading and relay state
+    json += ",\"reading\":";
+    if (!thermostats[i].sensor_key.empty()) {
+      float v = self->get_sensor_value_by_key_(thermostats[i].sensor_key);
+      if (std::isnan(v)) {
+        json += "null";
+      } else {
+        snprintf(fbuf, sizeof(fbuf), "%.1f", v);
+        json += fbuf;
+      }
+    } else {
+      json += "null";
+    }
+    json += ",\"relay_on\":";
+    json += relays[i].sw->state ? "true" : "false";
+    json += '}';
+  }
+  json += "],\"sensors\":[";
+  // Available sensor options
+  json += "{\"key\":\"water_temp\",\"label\":\"Water Temp\"}";
+  json += ",{\"key\":\"aux1\",\"label\":\"Aux Sensor 1\"}";
+  if (self->get_ambient_temp() != nullptr) {
+    json += ",{\"key\":\"ambient_temp\",\"label\":\"Ambient Temp\"}";
+  }
+  json += "]}";
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json.c_str(), json.size());
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_thermostat_post_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 2048) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
+    return ESP_FAIL;
+  }
+
+  char *body = new char[content_len + 1];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    delete[] body;
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  // Parse array of relay thermostat configs:
+  // [{"idx":0,"enabled":true,"sensor":"water_temp","on_below":5.0,"off_above":10.0}, ...]
+  const char *p = body;
+  while (true) {
+    const char *start = strchr(p, '{');
+    if (!start) break;
+    const char *end = strchr(start, '}');
+    if (!end) break;
+
+    // Extract idx
+    const char *idx_p = strstr(start, "\"idx\":");
+    if (!idx_p || idx_p >= end) { p = end + 1; continue; }
+    int idx = atoi(idx_p + 6);
+    if (idx < 0 || idx >= MAX_RELAYS) { p = end + 1; continue; }
+
+    // enabled
+    self->relay_thermostats_[idx].enabled =
+        (strstr(start, "\"enabled\":true") != nullptr);
+
+    // sensor key
+    const char *sk = strstr(start, "\"sensor\":\"");
+    if (sk && sk < end) {
+      sk += 10;
+      const char *sq = strchr(sk, '"');
+      if (sq && sq <= end) {
+        self->relay_thermostats_[idx].sensor_key = std::string(sk, sq - sk);
+      }
+    } else {
+      self->relay_thermostats_[idx].sensor_key = "";
+    }
+
+    // on_below
+    const char *onp = strstr(start, "\"on_below\":");
+    if (onp && onp < end) {
+      self->relay_thermostats_[idx].on_below = strtof(onp + 11, nullptr);
+    }
+
+    // off_above
+    const char *offp = strstr(start, "\"off_above\":");
+    if (offp && offp < end) {
+      self->relay_thermostats_[idx].off_above = strtof(offp + 12, nullptr);
+    }
+
+    p = end + 1;
+  }
+
+  delete[] body;
+  self->save_thermostat_config_();
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *r = R"({"ok":true,"msg":"Thermostat config saved"})";
   return httpd_resp_send(req, r, strlen(r));
 }
 

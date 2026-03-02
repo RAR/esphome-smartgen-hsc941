@@ -40,6 +40,15 @@ struct ExerciseConfig {
   bool load_transfer{false}; // Close transfer switch during exercise
 };
 
+// ── Relay thermostat ─────────────────────────────────────────
+// sensor_key: "water_temp", "aux1", "ambient_temp", or "" (disabled)
+struct RelayThermostat {
+  bool enabled{false};
+  std::string sensor_key;     // JSON key for the sensor in /api/status
+  float on_below{5.0f};       // Turn relay ON when temp drops below this
+  float off_above{10.0f};     // Turn relay OFF when temp rises above this
+};
+
 class SmartgenHSC941Web : public Component {
  public:
   SmartgenHSC941Web() = default;
@@ -68,6 +77,8 @@ class SmartgenHSC941Web : public Component {
   static esp_err_t handle_api_relay_(httpd_req_t *req);
   static esp_err_t handle_api_exercise_get_(httpd_req_t *req);
   static esp_err_t handle_api_exercise_post_(httpd_req_t *req);
+  static esp_err_t handle_api_thermostat_get_(httpd_req_t *req);
+  static esp_err_t handle_api_thermostat_post_(httpd_req_t *req);
 
   // Accessor for the controller
   smartgen_hsc941::SmartgenHSC941 *get_controller() { return this->controller_; }
@@ -82,6 +93,10 @@ class SmartgenHSC941Web : public Component {
   uint32_t get_exercise_remaining_sec() const;
   std::string get_exercise_last_run() const { return this->exercise_last_run_; }
   std::string get_exercise_fail_reason() const { return this->exercise_fail_reason_; }
+
+  // Thermostat accessors (used by handlers)
+  const std::array<RelayThermostat, MAX_RELAYS> &get_thermostats() const { return this->relay_thermostats_; }
+  float get_sensor_value_by_key_(const std::string &key) const;
 
  protected:
   smartgen_hsc941::SmartgenHSC941 *controller_{nullptr};
@@ -110,6 +125,14 @@ class SmartgenHSC941Web : public Component {
   void exercise_step_();
   void start_exercise_();
   void stop_exercise_();
+
+  // ── Relay thermostat ──
+  std::array<RelayThermostat, MAX_RELAYS> relay_thermostats_{};
+  uint32_t last_thermostat_check_{0};
+
+  void load_thermostat_config_();
+  void save_thermostat_config_();
+  void thermostat_step_();
 
   void start_server_();
   void stop_server_();
