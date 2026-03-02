@@ -39,6 +39,18 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .hdr-title{font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
 .hdr-sub{font-size:.7rem;color:var(--dim);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
 .hdr-right{display:flex;align-items:center;gap:10px}
+.badge-ok{background:#16a34a;color:#fff}
+.badge-warn{background:#d97706;color:#fff;animation:pulse-warn 1.5s infinite}
+.badge-sd{background:#dc2626;color:#fff;animation:pulse-sd 1s infinite}
+@keyframes pulse-warn{0%,100%{opacity:1}50%{opacity:.6}}
+@keyframes pulse-sd{0%,100%{opacity:1}50%{opacity:.5}}
+/* ── Nav Tabs ── */
+.nav{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:52px;z-index:49}
+.nav-tab{padding:10px 18px;font-size:.78rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;user-select:none;background:none;border-top:none;border-left:none;border-right:none}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.section{display:none}
+.section.active{display:block}
 .badge{padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
 .badge-conn{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
 .badge-disc{background:var(--red-bg);color:var(--red);border:1px solid #ef444430;animation:pulse-red 2s infinite}
@@ -206,13 +218,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
  </div>
  <div class="hdr-right">
+  <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
   <span class="badge badge-mode" id="modeBadge">---</span>
  </div>
 </header>
 
+<nav class="nav">
+ <button class="nav-tab active" data-sec="monitor" onclick="switchSec('monitor')">Monitoring</button>
+ <button class="nav-tab" data-sec="config" onclick="switchSec('config')">Configuration</button>
+ <button class="nav-tab" data-sec="history" onclick="switchSec('history')">History</button>
+</nav>
+
 <main class="main">
 
+<div class="section active" id="sec-monitor">
 <!-- Gauges Row -->
 <div class="row r-gauges">
  <div class="card"><div class="card-body gauge-wrap" id="gVolt"></div></div>
@@ -260,22 +280,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  </div>
 </div>
 
-<!-- Runtime -->
-<div class="row r-full">
- <div class="card">
-  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><h2>Runtime &amp; Totals</h2></div>
-  <div class="card-body">
-   <div class="runtime-row">
-    <div class="runtime-item"><div class="runtime-val" id="rt_hrs">--</div><div class="runtime-lbl">Total Hours</div></div>
-    <div class="runtime-item"><div class="runtime-val" id="rt_starts">--</div><div class="runtime-lbl">Total Starts</div></div>
-    <div class="runtime-item"><div class="runtime-val" id="rt_kwh">--</div><div class="runtime-lbl">Total kWh</div></div>
-    <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
-    <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
-   </div>
-  </div>
- </div>
-</div>
-
 <!-- Annunciator -->
 <div class="row r-full">
  <div class="card">
@@ -291,8 +295,28 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="card-body"><div class="io-grid" id="ioPanel"></div></div>
  </div>
 </div>
+</div><!-- /sec-monitor -->
 
+<div class="section" id="sec-config">
 <!-- Controls -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><h2>Controls</h2></div>
+  <div class="card-body">
+   <div class="ctrl-grid">
+    <button class="ctrl-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')"><span class="btn-ico">&#9654;</span>Start</button>
+    <button class="ctrl-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')"><span class="btn-ico">&#9632;</span>Stop</button>
+    <button class="ctrl-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')"><span class="btn-ico">&#8635;</span>Auto</button>
+    <button class="ctrl-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')"><span class="btn-ico">&#9881;</span>Manual</button>
+    <button class="ctrl-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')"><span class="btn-ico">&#9889;</span>Xfer Close</button>
+    <button class="ctrl-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')"><span class="btn-ico">&#9675;</span>Xfer Open</button>
+    <button class="ctrl-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')"><span class="btn-ico">&#8634;</span>Reset</button>
+   </div>
+  </div>
+ </div>
+</div>
+
+<!-- Board Relays -->
 <div class="row r-full" id="relaySection" style="display:none">
  <div class="card">
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M7 8v8m5-8v8m5-8v8"/></svg><h2>Board Relays</h2></div>
@@ -351,24 +375,25 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
  </div>
 </div>
+</div><!-- /sec-config -->
 
-<!-- Controls -->
+<div class="section" id="sec-history">
+<!-- Runtime -->
 <div class="row r-full">
  <div class="card">
-  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><h2>Controls</h2></div>
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><h2>Runtime &amp; Totals</h2></div>
   <div class="card-body">
-   <div class="ctrl-grid">
-    <button class="ctrl-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')"><span class="btn-ico">&#9654;</span>Start</button>
-    <button class="ctrl-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')"><span class="btn-ico">&#9632;</span>Stop</button>
-    <button class="ctrl-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')"><span class="btn-ico">&#8635;</span>Auto</button>
-    <button class="ctrl-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')"><span class="btn-ico">&#9881;</span>Manual</button>
-    <button class="ctrl-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')"><span class="btn-ico">&#9889;</span>Xfer Close</button>
-    <button class="ctrl-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')"><span class="btn-ico">&#9675;</span>Xfer Open</button>
-    <button class="ctrl-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')"><span class="btn-ico">&#8634;</span>Reset</button>
+   <div class="runtime-row">
+    <div class="runtime-item"><div class="runtime-val" id="rt_hrs">--</div><div class="runtime-lbl">Total Hours</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_starts">--</div><div class="runtime-lbl">Total Starts</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_kwh">--</div><div class="runtime-lbl">Total kWh</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
    </div>
   </div>
  </div>
 </div>
+</div><!-- /sec-history -->
 </main>
 
 <!-- Confirm Modal -->
@@ -504,13 +529,21 @@ function update(d){
   document.getElementById('hdrTime').textContent='Controller '+ts;
  }
  // Annunciator
+ let sdCount=0,wCount=0;
  ANN.forEach(a=>{
   const on=b[a.k]===true;
+  if(on){if(a.t==='sd')sdCount++;else wCount++;}
   const lamp=document.getElementById('lmp_'+a.k);
   const row=document.getElementById('ann_'+a.k);
   if(lamp)lamp.className='lamp '+(on?(a.t==='w'?'amber':'red'):'off');
   if(row)row.className='ann'+(on?(a.t==='w'?' active-w':' active-sd'):'');
  });
+ // Header alarm badge
+ const ab=document.getElementById('alarmBadge');
+ if(b.estop){ab.textContent='E-STOP';ab.className='badge badge-sd';}
+ else if(sdCount>0){ab.textContent=sdCount+' SHUTDOWN';ab.className='badge badge-sd';}
+ else if(wCount>0){ab.textContent=wCount+' WARNING';ab.className='badge badge-warn';}
+ else{ab.textContent='OK';ab.className='badge badge-ok';}
  // I/O
  IOS.forEach(io=>{
   const on=b[io.k]===true;
@@ -671,6 +704,16 @@ function stopExercise(){
 document.getElementById('exEnabled').addEventListener('change',function(){
  document.getElementById('exEnabledLbl').textContent=this.checked?'Enabled':'Disabled';
 });
+
+/* ── Section switching ── */
+function switchSec(id){
+ document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+ document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+ const sec=document.getElementById('sec-'+id);
+ if(sec)sec.classList.add('active');
+ const tab=document.querySelector('.nav-tab[data-sec=\"'+id+'\"]');
+ if(tab)tab.classList.add('active');
+}
 
 /* ── Init ── */
 initGauges();initPanels();poll();setInterval(poll,2500);
