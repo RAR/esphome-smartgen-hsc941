@@ -1,7 +1,12 @@
 #include "smartgen_hsc941.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/hal.h"
 #include <cstring>
+#include <esp_timer.h>
+#include <esp_rom_sys.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 namespace esphome {
 namespace smartgen_hsc941 {
@@ -111,7 +116,7 @@ void SmartgenHSC941::set_flow_control_(bool transmit) {
   if (this->flow_control_pin_ >= 0) {
     gpio_set_level(static_cast<gpio_num_t>(this->flow_control_pin_), transmit ? 1 : 0);
     if (transmit) {
-      ets_delay_us(TX_SETTLE_US);
+      esp_rom_delay_us(TX_SETTLE_US);
     }
   }
 }
@@ -167,14 +172,14 @@ bool SmartgenHSC941::send_and_receive_(uint8_t *request, size_t req_len,
   this->set_flow_control_(false);
 
   // Small inter-frame delay
-  delay(INTER_FRAME_DELAY_MS);
+  vTaskDelay(pdMS_TO_TICKS(INTER_FRAME_DELAY_MS));
 
   // Read response with timeout
   size_t total_read = 0;
-  uint32_t start_time = millis();
+  uint32_t start_time = (uint32_t)(esp_timer_get_time() / 1000);
 
   while (total_read < expected_len) {
-    if (millis() - start_time > RESPONSE_TIMEOUT_MS) {
+    if (((uint32_t)(esp_timer_get_time() / 1000)) - start_time > RESPONSE_TIMEOUT_MS) {
       ESP_LOGW(TAG, "Response timeout after %zu bytes (expected %zu)", total_read, expected_len);
       *resp_len = total_read;
       return false;
@@ -190,7 +195,7 @@ bool SmartgenHSC941::send_and_receive_(uint8_t *request, size_t req_len,
         total_read += read;
       }
     } else {
-      delay(1);
+      vTaskDelay(pdMS_TO_TICKS(1));
     }
   }
 
@@ -723,7 +728,7 @@ void SmartgenHSC941::update() {
     }
 
     // Small delay between requests
-    delay(INTER_FRAME_DELAY_MS);
+    vTaskDelay(pdMS_TO_TICKS(INTER_FRAME_DELAY_MS));
   }
 
   // ---- Read Holding Registers (Function Code 03H) ----
