@@ -104,9 +104,19 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .lamp.blue{background:var(--blue);box-shadow:0 0 6px var(--blue)}
 
 /* ── I/O row ── */
-.io-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px}
-.io-item{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;font-size:.7rem;font-weight:500;color:var(--dim)}
-.io-item.on{color:var(--text)}
+.io-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
+.io-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:.74rem;font-weight:500;color:var(--dim);background:var(--surface);border:1px solid transparent;transition:all .3s}
+.io-item .io-lbl{flex:1}
+.io-item .io-state{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;flex-shrink:0}
+.io-item.off-state .io-state{background:#ffffff08;color:var(--faint)}
+.io-item.on-green{color:var(--text);background:#22c55e0d;border-color:#22c55e25}
+.io-item.on-green .io-state{background:#22c55e28;color:var(--green)}
+.io-item.on-blue{color:var(--text);background:#3b82f60d;border-color:#3b82f625}
+.io-item.on-blue .io-state{background:#3b82f628;color:var(--blue)}
+.io-item.on-red{color:var(--text);background:#ef44440d;border-color:#ef444425}
+.io-item.on-red .io-state{background:#ef444428;color:var(--red)}
+.io-item.on-amber{color:var(--text);background:#f59e0b0d;border-color:#f59e0b25}
+.io-item.on-amber .io-state{background:#f59e0b28;color:var(--orange)}
 
 /* ── Controls ── */
 .ctrl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
@@ -348,7 +358,7 @@ function initPanels(){
  ANN.forEach(a=>{ah+=`<div class="ann" id="ann_${a.k}"><span class="lamp off" id="lmp_${a.k}"></span><span>${a.l}</span></div>`;});
  document.getElementById('annPanel').innerHTML=ah;
  let ih='';
- IOS.forEach(io=>{ih+=`<div class="io-item" id="io_${io.k}"><span class="lamp off" id="iol_${io.k}"></span><span>${io.l}</span></div>`;});
+ IOS.forEach(io=>{ih+=`<div class="io-item off-state" id="io_${io.k}"><span class="lamp off" id="iol_${io.k}"></span><span class="io-lbl">${io.l}</span><span class="io-state">OFF</span></div>`;});
  document.getElementById('ioPanel').innerHTML=ih;
 }
 
@@ -409,7 +419,9 @@ function update(d){
   const lamp=document.getElementById('iol_'+io.k);
   const row=document.getElementById('io_'+io.k);
   if(lamp)lamp.className='lamp '+(on?io.c:'off');
-  if(row)row.className='io-item'+(on?' on':'');
+  if(row)row.className='io-item '+(on?'on-'+io.c:'off-state');
+  const st=row?row.querySelector('.io-state'):null;
+  if(st)st.textContent=on?'ON':'OFF';
  });
 }
 
