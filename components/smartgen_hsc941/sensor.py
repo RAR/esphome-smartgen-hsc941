@@ -122,14 +122,16 @@ CONF_RELEASE_DAY = "release_day"
 
 
 def sensor_schema(unit, icon, accuracy, device_class=None, state_class=STATE_CLASS_MEASUREMENT):
-    schema = sensor.sensor_schema(
-        unit_of_measurement=unit,
-        icon=icon,
-        accuracy_decimals=accuracy,
-        device_class=device_class,
-        state_class=state_class,
-    )
-    return schema
+    kwargs = {
+        "unit_of_measurement": unit,
+        "icon": icon,
+        "accuracy_decimals": accuracy,
+    }
+    if device_class is not None:
+        kwargs["device_class"] = device_class
+    if state_class is not None:
+        kwargs["state_class"] = state_class
+    return sensor.sensor_schema(**kwargs)
 
 
 CONFIG_SCHEMA = cv.Schema(
