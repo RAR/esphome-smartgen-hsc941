@@ -509,12 +509,11 @@ function update(d){
  // Phase cards
  const ids=[['pv_a','gen_va'],['pv_b','gen_vb'],['pv_c','gen_vc'],['pi_a','ia'],['pi_b','ib'],['pi_c','ic'],['pp_a','pa_kw'],['pp_b','pb_kw'],['pp_c','pc_kw']];
  ids.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
- // Auto-hide unused phases (single-phase systems)
- const hasB=s.gen_vb!=null&&s.gen_vb>0;
+ // Auto-hide unused phases (split-phase: A+B=240V, 3-phase: A+B+C)
  const hasC=s.gen_vc!=null&&s.gen_vc>0;
  const hide=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
- hide('phB',hasB);hide('phC',hasC);
- hide('llAB',hasB);hide('llBC',hasB||hasC);hide('llCA',hasC);
+ hide('phC',hasC);
+ hide('llBC',hasC);hide('llCA',hasC);
  // Line-line + power
  const t=[['v_ab','gen_vab'],['v_bc','gen_vbc'],['v_ca','gen_vca'],['v_tkw','total_kw'],['v_kvar','kvar'],['v_kva','kva'],['v_pf','pf']];
  t.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
