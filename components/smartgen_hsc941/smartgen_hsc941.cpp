@@ -761,5 +761,169 @@ void SmartgenHSC941::update() {
   }
 }
 
+// ============================================================
+//  JSON Builders for Web UI
+// ============================================================
+
+static void json_append_sensor(std::string &out, const char *key, sensor::Sensor *s, bool &first) {
+  if (s == nullptr)
+    return;
+  if (!first) out += ',';
+  first = false;
+  out += '"';
+  out += key;
+  out += "\":";
+  if (std::isnan(s->state)) {
+    out += "null";
+  } else {
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%.2f", s->state);
+    out += buf;
+  }
+}
+
+static void json_append_bs(std::string &out, const char *key, binary_sensor::BinarySensor *s, bool &first) {
+  if (s == nullptr)
+    return;
+  if (!first) out += ',';
+  first = false;
+  out += '"';
+  out += key;
+  out += "\":";
+  out += s->state ? "true" : "false";
+}
+
+void SmartgenHSC941::build_sensors_json(std::string &out) {
+  out += '{';
+  bool first = true;
+  json_append_sensor(out, "gen_va", gen_voltage_a_sensor_, first);
+  json_append_sensor(out, "gen_vb", gen_voltage_b_sensor_, first);
+  json_append_sensor(out, "gen_vc", gen_voltage_c_sensor_, first);
+  json_append_sensor(out, "gen_vab", gen_voltage_ab_sensor_, first);
+  json_append_sensor(out, "gen_vbc", gen_voltage_bc_sensor_, first);
+  json_append_sensor(out, "gen_vca", gen_voltage_ca_sensor_, first);
+  json_append_sensor(out, "gen_freq", gen_frequency_sensor_, first);
+  json_append_sensor(out, "ia", phase_a_current_sensor_, first);
+  json_append_sensor(out, "ib", phase_b_current_sensor_, first);
+  json_append_sensor(out, "ic", phase_c_current_sensor_, first);
+  json_append_sensor(out, "water_temp", water_temp_sensor_, first);
+  json_append_sensor(out, "water_temp_r", water_temp_resistance_sensor_, first);
+  json_append_sensor(out, "oil_press", oil_pressure_sensor_, first);
+  json_append_sensor(out, "oil_press_r", oil_pressure_resistance_sensor_, first);
+  json_append_sensor(out, "aux1", aux_sensor_1_sensor_, first);
+  json_append_sensor(out, "aux1_r", aux_sensor_1_resistance_sensor_, first);
+  json_append_sensor(out, "rpm", engine_speed_sensor_, first);
+  json_append_sensor(out, "batt_v", battery_voltage_sensor_, first);
+  json_append_sensor(out, "charge_v", charge_voltage_sensor_, first);
+  json_append_sensor(out, "ctrl_year", controller_year_sensor_, first);
+  json_append_sensor(out, "ctrl_month", controller_month_sensor_, first);
+  json_append_sensor(out, "ctrl_day", controller_day_sensor_, first);
+  json_append_sensor(out, "ctrl_wday", controller_weekday_sensor_, first);
+  json_append_sensor(out, "ctrl_hour", controller_hour_sensor_, first);
+  json_append_sensor(out, "ctrl_min", controller_minute_sensor_, first);
+  json_append_sensor(out, "ctrl_sec", controller_second_sensor_, first);
+  json_append_sensor(out, "eng_status", engine_running_status_sensor_, first);
+  json_append_sensor(out, "eng_delay", engine_delay_sensor_, first);
+  json_append_sensor(out, "auto_status", auto_running_status_sensor_, first);
+  json_append_sensor(out, "auto_delay", auto_delay_sensor_, first);
+  json_append_sensor(out, "total_hours", engine_total_hours_sensor_, first);
+  json_append_sensor(out, "total_min", engine_total_minutes_sensor_, first);
+  json_append_sensor(out, "total_sec", engine_total_seconds_sensor_, first);
+  json_append_sensor(out, "total_starts", total_start_times_sensor_, first);
+  json_append_sensor(out, "total_kwh", total_energy_sensor_, first);
+  json_append_sensor(out, "sw_ver", software_version_sensor_, first);
+  json_append_sensor(out, "hw_ver", hardware_version_sensor_, first);
+  json_append_sensor(out, "angle_a", phase_a_angle_sensor_, first);
+  json_append_sensor(out, "angle_b", phase_b_angle_sensor_, first);
+  json_append_sensor(out, "angle_c", phase_c_angle_sensor_, first);
+  json_append_sensor(out, "pa_kw", phase_a_active_power_sensor_, first);
+  json_append_sensor(out, "pb_kw", phase_b_active_power_sensor_, first);
+  json_append_sensor(out, "pc_kw", phase_c_active_power_sensor_, first);
+  json_append_sensor(out, "total_kw", total_active_power_sensor_, first);
+  json_append_sensor(out, "kvar", reactive_power_sensor_, first);
+  json_append_sensor(out, "kva", apparent_power_sensor_, first);
+  json_append_sensor(out, "pf", power_factor_sensor_, first);
+  json_append_sensor(out, "load_pct", output_load_percent_sensor_, first);
+  json_append_sensor(out, "rel_year", release_year_sensor_, first);
+  json_append_sensor(out, "rel_month", release_month_sensor_, first);
+  json_append_sensor(out, "rel_day", release_day_sensor_, first);
+  out += '}';
+}
+
+void SmartgenHSC941::build_binary_sensors_json(std::string &out) {
+  out += '{';
+  bool first = true;
+  json_append_bs(out, "alarm", common_alarm_bs_, first);
+  json_append_bs(out, "warning", common_warning_bs_, first);
+  json_append_bs(out, "shutdown", common_shutdown_bs_, first);
+  json_append_bs(out, "on_load", gen_on_load_bs_, first);
+  json_append_bs(out, "estop", emergency_stop_bs_, first);
+  json_append_bs(out, "overspeed_sd", overspeed_shutdown_bs_, first);
+  json_append_bs(out, "underspeed_sd", underspeed_shutdown_bs_, first);
+  json_append_bs(out, "loss_speed_sd", loss_speed_signal_shutdown_bs_, first);
+  json_append_bs(out, "overfreq_sd", gen_overfrequency_shutdown_bs_, first);
+  json_append_bs(out, "underfreq_sd", gen_underfrequency_shutdown_bs_, first);
+  json_append_bs(out, "overvolt_sd", gen_overvoltage_shutdown_bs_, first);
+  json_append_bs(out, "undervolt_sd", gen_undervoltage_shutdown_bs_, first);
+  json_append_bs(out, "overcurr_sd", gen_overcurrent_shutdown_bs_, first);
+  json_append_bs(out, "crank_fail_sd", crank_failure_shutdown_bs_, first);
+  json_append_bs(out, "hi_temp_sd_in", high_temp_shutdown_in_bs_, first);
+  json_append_bs(out, "lo_op_sd_in", low_op_shutdown_in_bs_, first);
+  json_append_bs(out, "no_gen_sd", no_gen_shutdown_bs_, first);
+  json_append_bs(out, "ext_sd", external_shutdown_input_bs_, first);
+  json_append_bs(out, "lo_fuel_sd_in", low_fuel_level_shutdown_in_bs_, first);
+  json_append_bs(out, "lo_cool_sd_in", low_coolant_level_shutdown_in_bs_, first);
+  json_append_bs(out, "hi_temp_w_in", high_temp_warning_in_bs_, first);
+  json_append_bs(out, "lo_op_w_in", low_op_warning_in_bs_, first);
+  json_append_bs(out, "stop_fail_w", stop_failure_warning_bs_, first);
+  json_append_bs(out, "lo_fuel_w_in", low_fuel_level_warning_in_bs_, first);
+  json_append_bs(out, "charge_fail_w", charging_failure_warning_bs_, first);
+  json_append_bs(out, "batt_uv_w", battery_undervoltage_warning_bs_, first);
+  json_append_bs(out, "batt_ov_w", battery_overvoltage_warning_bs_, first);
+  json_append_bs(out, "ext_w", external_warning_input_bs_, first);
+  json_append_bs(out, "loss_speed_w", loss_speed_signal_warning_bs_, first);
+  json_append_bs(out, "lo_cool_w_in", low_coolant_level_warning_in_bs_, first);
+  json_append_bs(out, "temp_open_w", temp_sensor_open_warning_bs_, first);
+  json_append_bs(out, "op_open_w", op_sensor_open_warning_bs_, first);
+  json_append_bs(out, "aux_open_w", aux_sensor_open_warning_bs_, first);
+  json_append_bs(out, "aux_w", aux_sensor_warning_bs_, first);
+  json_append_bs(out, "aux_sd", aux_sensor_shutdown_bs_, first);
+  json_append_bs(out, "auto_mode", in_auto_mode_bs_, first);
+  json_append_bs(out, "manual_mode", in_manual_mode_bs_, first);
+  json_append_bs(out, "stop_mode", in_stop_mode_bs_, first);
+  json_append_bs(out, "temp_open_sd", temp_sensor_open_shutdown_bs_, first);
+  json_append_bs(out, "op_open_sd", op_sensor_open_shutdown_bs_, first);
+  json_append_bs(out, "lo_oil_sd_in", low_engine_oil_level_shutdown_in_bs_, first);
+  json_append_bs(out, "aux_open_sd", aux_sensor_open_shutdown_bs_, first);
+  json_append_bs(out, "estop_in", emergency_stop_input_bs_, first);
+  json_append_bs(out, "aux_in1", aux_input_1_bs_, first);
+  json_append_bs(out, "aux_in2", aux_input_2_bs_, first);
+  json_append_bs(out, "aux_in3", aux_input_3_bs_, first);
+  json_append_bs(out, "aux_in4", aux_input_4_bs_, first);
+  json_append_bs(out, "aux_in5", aux_input_5_bs_, first);
+  json_append_bs(out, "aux_in6", aux_input_6_bs_, first);
+  json_append_bs(out, "start_relay", start_relay_output_bs_, first);
+  json_append_bs(out, "fuel_relay", fuel_relay_output_bs_, first);
+  json_append_bs(out, "aux_out1", aux_output_1_bs_, first);
+  json_append_bs(out, "aux_out2", aux_output_2_bs_, first);
+  json_append_bs(out, "aux_out3", aux_output_3_bs_, first);
+  json_append_bs(out, "aux_out4", aux_output_4_bs_, first);
+  json_append_bs(out, "hi_temp_sd", high_temp_shutdown_bs_, first);
+  json_append_bs(out, "lo_op_sd", low_op_shutdown_bs_, first);
+  json_append_bs(out, "hi_temp_w", high_temp_warning_bs_, first);
+  json_append_bs(out, "lo_op_w", low_op_warning_bs_, first);
+  out += '}';
+}
+
+void SmartgenHSC941::build_status_json(std::string &out) {
+  out += "{\"connected\":";
+  out += this->is_connected() ? "true" : "false";
+  out += ",\"sensors\":";
+  this->build_sensors_json(out);
+  out += ",\"binary\":";
+  this->build_binary_sensors_json(out);
+  out += '}';
+}
+
 }  // namespace smartgen_hsc941
 }  // namespace esphome

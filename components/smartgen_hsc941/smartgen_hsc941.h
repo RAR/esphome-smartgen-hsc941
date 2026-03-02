@@ -6,6 +6,7 @@
 #include "esphome/components/button/button.h"
 #include <driver/uart.h>
 #include <driver/gpio.h>
+#include <string>
 
 namespace esphome {
 namespace smartgen_hsc941 {
@@ -45,6 +46,14 @@ class SmartgenHSC941 : public PollingComponent {
 
   // Remote control - write coil (function code 05H)
   bool write_coil(uint16_t coil_address, bool value);
+
+  // JSON status builder for web UI companion component
+  void build_sensors_json(std::string &output);
+  void build_binary_sensors_json(std::string &output);
+  void build_status_json(std::string &output);
+
+  // Communication health
+  bool is_connected() const { return this->comm_failures_ < MAX_FAILURES; }
 
   // ===== SENSOR SETTERS (Function Code 03H - Holding Registers) =====
   void set_gen_voltage_a_sensor(sensor::Sensor *s) { this->gen_voltage_a_sensor_ = s; }
