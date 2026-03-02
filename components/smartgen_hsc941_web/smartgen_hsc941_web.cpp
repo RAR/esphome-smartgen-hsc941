@@ -16,185 +16,439 @@ const char SmartgenHSC941Web::DASHBOARD_HTML[] = R"rawliteral(<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SmartGen HSC941</title>
+<title>HSC941 Genset Controller</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#1a1a2e;--card:#16213e;--accent:#0f3460;--hi:#e94560;--ok:#2ecc71;--warn:#f39c12;--txt:#eee;--dim:#888}
-body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100vh;padding:8px}
-h1{text-align:center;padding:12px 0;font-size:1.3em;color:var(--hi);letter-spacing:1px}
-.bar{display:flex;justify-content:center;gap:6px;padding:4px 0 10px;flex-wrap:wrap}
-.bar .status{padding:4px 12px;border-radius:12px;font-size:.75em;font-weight:600}
-.conn{background:#2ecc7133;color:var(--ok)}.disc{background:#e9456033;color:var(--hi)}
-.mode{background:var(--accent);color:var(--txt)}
-.section{background:var(--card);border-radius:8px;padding:10px;margin-bottom:8px}
-.section h2{font-size:.85em;color:var(--dim);text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #ffffff15;padding-bottom:4px;margin-bottom:6px}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
-.item{background:#ffffff08;border-radius:6px;padding:6px 8px;display:flex;flex-direction:column}
-.item .lbl{font-size:.65em;color:var(--dim);text-transform:uppercase}
-.item .val{font-size:1.1em;font-weight:600;margin-top:2px}
-.alarms{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:4px}
-.alarm{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:4px;font-size:.75em;background:#ffffff05}
-.alarm .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-.dot.on{background:var(--hi);box-shadow:0 0 6px var(--hi)}.dot.off{background:#333}
-.dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok)}
-.dot.warn-on{background:var(--warn);box-shadow:0 0 6px var(--warn)}
-.controls{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:6px 0}
-.btn{border:none;border-radius:6px;padding:10px 20px;font-size:.85em;font-weight:600;cursor:pointer;transition:all .15s}
-.btn:active{transform:scale(.96)}
-.btn-start{background:#2ecc71;color:#000}.btn-stop{background:#e74c3c;color:#fff}
-.btn-auto{background:#3498db;color:#fff}.btn-manual{background:#f39c12;color:#000}
-.btn-gen-on{background:#27ae60;color:#fff}.btn-gen-off{background:#c0392b;color:#fff}
-.btn-reset{background:#9b59b6;color:#fff}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 16px;border-radius:8px;font-size:.8em;display:none;z-index:99}
-.footer{text-align:center;padding:8px;font-size:.65em;color:var(--dim)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+ --bg:#0c0e14;--surface:#141720;--card:#1a1e2b;--border:#252a3a;
+ --text:#dee2ec;--dim:#6b7394;--faint:#3a4060;
+ --red:#ef4444;--orange:#f59e0b;--green:#22c55e;--blue:#3b82f6;--cyan:#06b6d4;--purple:#a855f7;
+ --red-bg:#ef444418;--orange-bg:#f59e0b18;--green-bg:#22c55e18;--blue-bg:#3b82f618;
+ --gauge-track:#1e2235;--radius:10px;
+}
+html{font-size:14px}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+@media(max-width:768px){html{font-size:13px}}
+
+/* ── Header ── */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--blue),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center}
+.hdr-logo svg{width:20px;height:20px;fill:#fff}
+.hdr-title{font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
+.hdr-sub{font-size:.7rem;color:var(--dim);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:10px}
+.badge{padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.badge-conn{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
+.badge-disc{background:var(--red-bg);color:var(--red);border:1px solid #ef444430;animation:pulse-red 2s infinite}
+.badge-mode{background:var(--blue-bg);color:var(--blue);border:1px solid #3b82f630}
+.badge-auto{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
+.badge-manual{background:#f59e0b18;color:var(--orange);border:1px solid #f59e0b30}
+.badge-stop{background:var(--red-bg);color:var(--red);border:1px solid #ef444430}
+@keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ── Layout ── */
+.main{max-width:1400px;margin:0 auto;padding:16px 20px 80px}
+.row{display:grid;gap:12px;margin-bottom:12px}
+.r-gauges{grid-template-columns:repeat(4,1fr)}
+.r-dual{grid-template-columns:1fr 1fr}
+.r-triple{grid-template-columns:1fr 1fr 1fr}
+.r-full{grid-template-columns:1fr}
+@media(max-width:1024px){.r-gauges{grid-template-columns:repeat(2,1fr)}.r-triple{grid-template-columns:1fr}}
+@media(max-width:600px){.r-gauges{grid-template-columns:1fr 1fr}.r-dual{grid-template-columns:1fr}}
+
+/* ── Card ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.card-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.card-hd .ico{width:16px;height:16px;opacity:.5}
+.card-hd h2{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
+.card-body{padding:14px}
+
+/* ── Gauge (SVG ring) ── */
+.gauge-wrap{display:flex;flex-direction:column;align-items:center;padding:16px 8px}
+.gauge-svg{width:140px;height:140px}
+.gauge-track{fill:none;stroke:var(--gauge-track);stroke-width:10;stroke-linecap:round}
+.gauge-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1),stroke .5s}
+.gauge-center{font-size:1.5rem;font-weight:700;fill:var(--text);text-anchor:middle;dominant-baseline:central}
+.gauge-unit{font-size:.6rem;fill:var(--dim);text-anchor:middle;font-weight:500}
+.gauge-label{margin-top:6px;font-size:.72rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.gauge-range{font-size:.6rem;color:var(--faint);margin-top:2px}
+
+/* ── Data Table ── */
+.dtable{width:100%;border-collapse:collapse}
+.dtable tr{border-bottom:1px solid #ffffff06}
+.dtable tr:last-child{border-bottom:none}
+.dtable td{padding:7px 0;vertical-align:middle}
+.dtable .dlbl{color:var(--dim);font-size:.75rem;font-weight:500;width:50%}
+.dtable .dval{text-align:right;font-size:.85rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dtable .dunit{color:var(--dim);font-size:.7rem;font-weight:400;margin-left:3px}
+
+/* ── Phase bars (3-phase visual) ── */
+.phases{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.phase{background:var(--surface);border-radius:8px;padding:10px;text-align:center}
+.phase-label{font-size:.65rem;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.phase-val{font-size:1.25rem;font-weight:700;font-variant-numeric:tabular-nums}
+.phase-sub{font-size:.65rem;color:var(--dim);margin-top:3px;font-weight:500}
+.ph-a .phase-val{color:#f87171}.ph-b .phase-val{color:#fbbf24}.ph-c .phase-val{color:#60a5fa}
+.ph-a{border-top:2px solid #f87171}.ph-b{border-top:2px solid #fbbf24}.ph-c{border-top:2px solid #60a5fa}
+
+/* ── Annunciator Panel ── */
+.ann-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:2px}
+.ann{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:.72rem;font-weight:500;transition:background .3s}
+.ann.active-sd{background:#ef444420;color:#fca5a5}.ann.active-w{background:#f59e0b20;color:#fcd34d}
+.ann .lamp{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1.5px solid #ffffff10;transition:all .3s}
+.lamp.off{background:#252a3a}
+.lamp.red{background:var(--red);box-shadow:0 0 8px var(--red),0 0 20px #ef444440}
+.lamp.amber{background:var(--orange);box-shadow:0 0 8px var(--orange),0 0 20px #f59e0b40}
+.lamp.green{background:var(--green);box-shadow:0 0 8px var(--green),0 0 20px #22c55e40}
+.lamp.blue{background:var(--blue);box-shadow:0 0 6px var(--blue)}
+
+/* ── I/O row ── */
+.io-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:4px}
+.io-item{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:6px;font-size:.7rem;font-weight:500;color:var(--dim)}
+.io-item.on{color:var(--text)}
+
+/* ── Controls ── */
+.ctrl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.ctrl-btn{position:relative;border:none;border-radius:8px;padding:14px 10px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.04em;color:#fff;overflow:hidden}
+.ctrl-btn::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.08)}
+.ctrl-btn:hover::before{opacity:1}
+.ctrl-btn:active{transform:scale(.97)}
+.ctrl-btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-start{background:linear-gradient(135deg,#16a34a,#22c55e)}.btn-stop{background:linear-gradient(135deg,#dc2626,#ef4444)}
+.btn-auto{background:linear-gradient(135deg,#2563eb,#3b82f6)}.btn-manual{background:linear-gradient(135deg,#d97706,#f59e0b);color:#000}
+.btn-gen-on{background:linear-gradient(135deg,#0d9488,#14b8a6)}.btn-gen-off{background:linear-gradient(135deg,#9f1239,#e11d48)}
+.btn-reset{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+.ctrl-btn .btn-ico{font-size:1.2rem;display:block;margin-bottom:4px}
+
+/* ── Confirmation modal ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);display:none;z-index:100;align-items:center;justify-content:center}
+.modal-overlay.show{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;max-width:360px;width:90%;text-align:center}
+.modal h3{font-size:1rem;margin-bottom:6px}.modal p{font-size:.8rem;color:var(--dim);margin-bottom:16px}
+.modal-btns{display:flex;gap:8px;justify-content:center}
+.modal-btns button{padding:8px 24px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.modal-btns .m-cancel{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.modal-btns .m-confirm{background:var(--blue);color:#fff}
+.modal-btns .m-danger{background:var(--red);color:#fff}
+
+/* ── Toast ── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);color:var(--text);padding:10px 20px;border-radius:8px;font-size:.78rem;font-weight:600;z-index:200;transition:transform .3s cubic-bezier(.4,0,.2,1);pointer-events:none}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.ok{border-color:#22c55e40}.toast.err{border-color:#ef444440}
+
+/* ── Runtime bar ── */
+.runtime-row{display:flex;gap:16px;flex-wrap:wrap}
+.runtime-item{flex:1;min-width:100px;text-align:center;padding:10px;background:var(--surface);border-radius:8px}
+.runtime-val{font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums}
+.runtime-lbl{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:600}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--faint);border-radius:3px}
 </style>
 </head>
 <body>
-<h1>⚡ SmartGen HSC941 Dashboard</h1>
-<div class="bar">
- <span id="connStatus" class="status disc">OFFLINE</span>
- <span id="modeStatus" class="status mode">---</span>
+
+<!-- Header -->
+<header class="hdr">
+ <div class="hdr-left">
+  <div class="hdr-logo"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+  <div>
+   <div class="hdr-title">HSC941 Genset Controller</div>
+   <div class="hdr-sub" id="hdrTime">SmartGen &bull; Modbus RTU</div>
+  </div>
+ </div>
+ <div class="hdr-right">
+  <span class="badge badge-disc" id="connBadge">OFFLINE</span>
+  <span class="badge badge-mode" id="modeBadge">---</span>
+ </div>
+</header>
+
+<main class="main">
+
+<!-- Gauges Row -->
+<div class="row r-gauges">
+ <div class="card"><div class="card-body gauge-wrap" id="gVolt"></div></div>
+ <div class="card"><div class="card-body gauge-wrap" id="gFreq"></div></div>
+ <div class="card"><div class="card-body gauge-wrap" id="gRPM"></div></div>
+ <div class="card"><div class="card-body gauge-wrap" id="gLoad"></div></div>
 </div>
 
-<div class="section"><h2>Electrical</h2>
-<div class="grid" id="elecGrid"></div></div>
+<!-- 3-Phase Electrical + Engine -->
+<div class="row r-dual">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><h2>Generator Output</h2></div>
+  <div class="card-body">
+   <div class="phases">
+    <div class="phase ph-a"><div class="phase-label">Phase A</div><div class="phase-val" id="pv_a">--</div><div class="phase-sub"><span id="pi_a">--</span> A &bull; <span id="pp_a">--</span> kW</div></div>
+    <div class="phase ph-b"><div class="phase-label">Phase B</div><div class="phase-val" id="pv_b">--</div><div class="phase-sub"><span id="pi_b">--</span> A &bull; <span id="pp_b">--</span> kW</div></div>
+    <div class="phase ph-c"><div class="phase-label">Phase C</div><div class="phase-val" id="pv_c">--</div><div class="phase-sub"><span id="pi_c">--</span> A &bull; <span id="pp_c">--</span> kW</div></div>
+   </div>
+   <table class="dtable" style="margin-top:10px">
+    <tr><td class="dlbl">Line-Line AB</td><td class="dval"><span id="v_ab">--</span><span class="dunit">V</span></td></tr>
+    <tr><td class="dlbl">Line-Line BC</td><td class="dval"><span id="v_bc">--</span><span class="dunit">V</span></td></tr>
+    <tr><td class="dlbl">Line-Line CA</td><td class="dval"><span id="v_ca">--</span><span class="dunit">V</span></td></tr>
+    <tr><td class="dlbl">Total Active</td><td class="dval"><span id="v_tkw">--</span><span class="dunit">kW</span></td></tr>
+    <tr><td class="dlbl">Reactive</td><td class="dval"><span id="v_kvar">--</span><span class="dunit">kVAR</span></td></tr>
+    <tr><td class="dlbl">Apparent</td><td class="dval"><span id="v_kva">--</span><span class="dunit">kVA</span></td></tr>
+    <tr><td class="dlbl">Power Factor</td><td class="dval"><span id="v_pf">--</span></td></tr>
+   </table>
+  </div>
+ </div>
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7.07-3.07l4.24-4.24m5.66-5.66l4.24-4.24M1 12h6m6 0h6m-3.07 7.07l-4.24-4.24m-5.66-5.66L4.93 4.93"/></svg><h2>Engine</h2></div>
+  <div class="card-body">
+   <table class="dtable">
+    <tr><td class="dlbl">Water Temperature</td><td class="dval"><span id="v_wt">--</span><span class="dunit">&#176;C</span></td></tr>
+    <tr><td class="dlbl">Oil Pressure</td><td class="dval"><span id="v_op">--</span><span class="dunit">kPa</span></td></tr>
+    <tr><td class="dlbl">Battery Voltage</td><td class="dval"><span id="v_bv">--</span><span class="dunit">V</span></td></tr>
+    <tr><td class="dlbl">Charge Voltage</td><td class="dval"><span id="v_cv">--</span><span class="dunit">V</span></td></tr>
+    <tr><td class="dlbl">Engine Speed</td><td class="dval"><span id="v_rpm2">--</span><span class="dunit">RPM</span></td></tr>
+    <tr><td class="dlbl">Aux Sensor 1</td><td class="dval"><span id="v_aux">--</span></td></tr>
+    <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
+    <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
+   </table>
+  </div>
+ </div>
+</div>
 
-<div class="section"><h2>Engine &amp; Environment</h2>
-<div class="grid" id="engGrid"></div></div>
+<!-- Runtime -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><h2>Runtime &amp; Totals</h2></div>
+  <div class="card-body">
+   <div class="runtime-row">
+    <div class="runtime-item"><div class="runtime-val" id="rt_hrs">--</div><div class="runtime-lbl">Total Hours</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_starts">--</div><div class="runtime-lbl">Total Starts</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_kwh">--</div><div class="runtime-lbl">Total kWh</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
+   </div>
+  </div>
+ </div>
+</div>
 
-<div class="section"><h2>Power</h2>
-<div class="grid" id="pwrGrid"></div></div>
+<!-- Annunciator -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><h2>Alarm Annunciator</h2></div>
+  <div class="card-body"><div class="ann-grid" id="annPanel"></div></div>
+ </div>
+</div>
 
-<div class="section"><h2>Runtime</h2>
-<div class="grid" id="rtGrid"></div></div>
+<!-- I/O -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8m-8 4h8m-8 4h5"/></svg><h2>Inputs / Outputs</h2></div>
+  <div class="card-body"><div class="io-grid" id="ioPanel"></div></div>
+ </div>
+</div>
 
-<div class="section"><h2>Alarms &amp; Warnings</h2>
-<div class="alarms" id="alarmGrid"></div></div>
+<!-- Controls -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><h2>Controls</h2></div>
+  <div class="card-body">
+   <div class="ctrl-grid">
+    <button class="ctrl-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')"><span class="btn-ico">&#9654;</span>Start</button>
+    <button class="ctrl-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')"><span class="btn-ico">&#9632;</span>Stop</button>
+    <button class="ctrl-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')"><span class="btn-ico">&#8635;</span>Auto</button>
+    <button class="ctrl-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')"><span class="btn-ico">&#9881;</span>Manual</button>
+    <button class="ctrl-btn btn-gen-on" onclick="confirmCmd(6,'Generator ON','Close generator breaker?')"><span class="btn-ico">&#9889;</span>Gen ON</button>
+    <button class="ctrl-btn btn-gen-off" onclick="confirmCmd(5,'Generator OFF','Open generator breaker?','danger')"><span class="btn-ico">&#9675;</span>Gen OFF</button>
+    <button class="ctrl-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')"><span class="btn-ico">&#8634;</span>Reset</button>
+   </div>
+  </div>
+ </div>
+</div>
+</main>
 
-<div class="section"><h2>I/O Status</h2>
-<div class="alarms" id="ioGrid"></div></div>
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="confirmModal">
+ <div class="modal">
+  <h3 id="modalTitle">Confirm</h3>
+  <p id="modalMsg">Are you sure?</p>
+  <div class="modal-btns">
+   <button class="m-cancel" onclick="closeModal()">Cancel</button>
+   <button class="m-confirm" id="modalOk" onclick="execCmd()">Confirm</button>
+  </div>
+ </div>
+</div>
 
-<div class="section"><h2>Controls</h2>
-<div class="controls">
- <button class="btn btn-start" onclick="cmd(0)">▶ Start</button>
- <button class="btn btn-stop" onclick="cmd(1)">■ Stop</button>
- <button class="btn btn-auto" onclick="cmd(3)">Auto</button>
- <button class="btn btn-manual" onclick="cmd(4)">Manual</button>
- <button class="btn btn-gen-on" onclick="cmd(6)">Gen ON</button>
- <button class="btn btn-gen-off" onclick="cmd(5)">Gen OFF</button>
- <button class="btn btn-reset" onclick="cmd(7)">Fault Reset</button>
-</div></div>
-
+<!-- Toast -->
 <div class="toast" id="toast"></div>
-<div class="footer">SmartGen HSC941 Web UI &bull; ESPHome Component</div>
 
 <script>
-const S={
- gen_va:{l:'Gen V (A)',u:'V',g:'elec'},gen_vb:{l:'Gen V (B)',u:'V',g:'elec'},gen_vc:{l:'Gen V (C)',u:'V',g:'elec'},
- gen_vab:{l:'V AB',u:'V',g:'elec'},gen_vbc:{l:'V BC',u:'V',g:'elec'},gen_vca:{l:'V CA',u:'V',g:'elec'},
- gen_freq:{l:'Frequency',u:'Hz',g:'elec'},
- ia:{l:'Current A',u:'A',g:'elec'},ib:{l:'Current B',u:'A',g:'elec'},ic:{l:'Current C',u:'A',g:'elec'},
- water_temp:{l:'Water Temp',u:'°C',g:'eng'},oil_press:{l:'Oil Pressure',u:'kPa',g:'eng'},
- rpm:{l:'Engine RPM',u:'RPM',g:'eng'},batt_v:{l:'Battery',u:'V',g:'eng'},charge_v:{l:'Charge V',u:'V',g:'eng'},
- aux1:{l:'Aux Sensor 1',u:'',g:'eng'},
- pa_kw:{l:'Power A',u:'kW',g:'pwr'},pb_kw:{l:'Power B',u:'kW',g:'pwr'},pc_kw:{l:'Power C',u:'kW',g:'pwr'},
- total_kw:{l:'Total Power',u:'kW',g:'pwr'},kvar:{l:'Reactive',u:'kVAR',g:'pwr'},kva:{l:'Apparent',u:'kVA',g:'pwr'},
- pf:{l:'Power Factor',u:'',g:'pwr'},load_pct:{l:'Load',u:'%',g:'pwr'},
- total_hours:{l:'Total Hours',u:'h',g:'rt'},total_min:{l:'Minutes',u:'m',g:'rt'},
- total_starts:{l:'Total Starts',u:'',g:'rt'},total_kwh:{l:'Total Energy',u:'kWh',g:'rt'},
- eng_status:{l:'Engine Status',u:'',g:'rt'},auto_status:{l:'Auto Status',u:'',g:'rt'}
-};
-const A={
- alarm:{l:'Common Alarm',t:'sd'},warning:{l:'Common Warning',t:'w'},shutdown:{l:'Common Shutdown',t:'sd'},
- estop:{l:'Emergency Stop',t:'sd'},overspeed_sd:{l:'Overspeed SD',t:'sd'},underspeed_sd:{l:'Underspeed SD',t:'sd'},
- loss_speed_sd:{l:'Loss Speed SD',t:'sd'},overfreq_sd:{l:'Over-Freq SD',t:'sd'},underfreq_sd:{l:'Under-Freq SD',t:'sd'},
- overvolt_sd:{l:'Over-Volt SD',t:'sd'},undervolt_sd:{l:'Under-Volt SD',t:'sd'},overcurr_sd:{l:'Over-Current SD',t:'sd'},
- crank_fail_sd:{l:'Crank Fail SD',t:'sd'},hi_temp_sd_in:{l:'High Temp SD',t:'sd'},lo_op_sd_in:{l:'Low O.P. SD',t:'sd'},
- no_gen_sd:{l:'No Gen SD',t:'sd'},ext_sd:{l:'External SD',t:'sd'},lo_fuel_sd_in:{l:'Low Fuel SD',t:'sd'},
- lo_cool_sd_in:{l:'Low Coolant SD',t:'sd'},hi_temp_w_in:{l:'High Temp Warn',t:'w'},lo_op_w_in:{l:'Low O.P. Warn',t:'w'},
- stop_fail_w:{l:'Stop Fail Warn',t:'w'},lo_fuel_w_in:{l:'Low Fuel Warn',t:'w'},charge_fail_w:{l:'Charge Fail Warn',t:'w'},
- batt_uv_w:{l:'Battery UV Warn',t:'w'},batt_ov_w:{l:'Battery OV Warn',t:'w'},ext_w:{l:'External Warn',t:'w'},
- loss_speed_w:{l:'Loss Speed Warn',t:'w'},lo_cool_w_in:{l:'Low Coolant Warn',t:'w'},
- temp_open_w:{l:'Temp Open Warn',t:'w'},op_open_w:{l:'O.P. Open Warn',t:'w'},
- aux_open_w:{l:'Aux Open Warn',t:'w'},aux_w:{l:'Aux Warn',t:'w'},aux_sd:{l:'Aux SD',t:'sd'},
- temp_open_sd:{l:'Temp Open SD',t:'sd'},op_open_sd:{l:'O.P. Open SD',t:'sd'},
- lo_oil_sd_in:{l:'Low Oil SD',t:'sd'},aux_open_sd:{l:'Aux Open SD',t:'sd'},
- hi_temp_sd:{l:'High Temp (calc)',t:'sd'},lo_op_sd:{l:'Low O.P. (calc)',t:'sd'},
- hi_temp_w:{l:'High Temp W (calc)',t:'w'},lo_op_w:{l:'Low O.P. W (calc)',t:'w'}
-};
-const IO={
- on_load:{l:'Gen On Load',t:'ok'},auto_mode:{l:'Auto Mode',t:'ok'},manual_mode:{l:'Manual Mode',t:'ok'},
- stop_mode:{l:'Stop Mode',t:'ok'},estop_in:{l:'E-Stop Input',t:'sd'},
- start_relay:{l:'Start Relay',t:'ok'},fuel_relay:{l:'Fuel Relay',t:'ok'},
- aux_in1:{l:'Aux In 1',t:'ok'},aux_in2:{l:'Aux In 2',t:'ok'},aux_in3:{l:'Aux In 3',t:'ok'},
- aux_in4:{l:'Aux In 4',t:'ok'},aux_in5:{l:'Aux In 5',t:'ok'},aux_in6:{l:'Aux In 6',t:'ok'},
- aux_out1:{l:'Aux Out 1',t:'ok'},aux_out2:{l:'Aux Out 2',t:'ok'},aux_out3:{l:'Aux Out 3',t:'ok'},aux_out4:{l:'Aux Out 4',t:'ok'}
-};
-
-function mkItem(id,lbl){return `<div class="item"><span class="lbl">${lbl}</span><span class="val" id="${id}">--</span></div>`;}
-function mkAlarm(id,lbl){return `<div class="alarm"><span class="dot off" id="d_${id}"></span><span>${lbl}</span></div>`;}
-
-function init(){
- const grps={elec:'elecGrid',eng:'engGrid',pwr:'pwrGrid',rt:'rtGrid'};
- const ghtml={elec:'',eng:'',pwr:'',rt:''};
- for(const[k,v]of Object.entries(S)){ghtml[v.g]+=mkItem('s_'+k,v.l);}
- for(const g in grps)document.getElementById(grps[g]).innerHTML=ghtml[g];
- let ah='';for(const[k,v]of Object.entries(A))ah+=mkAlarm(k,v.l);
- document.getElementById('alarmGrid').innerHTML=ah;
- let ih='';for(const[k,v]of Object.entries(IO))ih+=mkAlarm(k,v.l);
- document.getElementById('ioGrid').innerHTML=ih;
+/* ── SVG Gauge factory ── */
+function mkGauge(containerId,label,unit,min,max,color,decimals){
+ const R=58,C=2*Math.PI*R,arc=0.75,len=C*arc;
+ const rot=360*(1-arc)/2+90;
+ const el=document.getElementById(containerId);
+ el.innerHTML=`
+  <svg class="gauge-svg" viewBox="0 0 140 140">
+   <circle class="gauge-track" cx="70" cy="70" r="${R}" stroke-dasharray="${len} ${C}" transform="rotate(${rot} 70 70)"/>
+   <circle class="gauge-fill" cx="70" cy="70" r="${R}" stroke="${color}" stroke-dasharray="0 ${C}" transform="rotate(${rot} 70 70)" id="gf_${containerId}"/>
+   <text class="gauge-center" x="70" y="66" id="gv_${containerId}">--</text>
+   <text class="gauge-unit" x="70" y="84">${unit}</text>
+  </svg>
+  <div class="gauge-label">${label}</div>
+  <div class="gauge-range">${min} &ndash; ${max} ${unit}</div>`;
+ return{
+  set(v){
+   const pct=v===null?0:Math.max(0,Math.min(1,(v-min)/(max-min)));
+   const o=len-(pct*len);
+   const fill=document.getElementById('gf_'+containerId);
+   const txt=document.getElementById('gv_'+containerId);
+   if(fill){fill.style.strokeDasharray=len+' '+C;fill.style.strokeDashoffset=o;}
+   if(txt)txt.textContent=v===null?'--':v.toFixed(decimals||0);
+  }
+ };
 }
 
-function fmtVal(v,u){
- if(v===null||v===undefined)return'--';
- let s=typeof v==='number'?v.toFixed(v>=100?0:v>=10?1:2):String(v);
- return u?s+' '+u:s;
+const G={};
+function initGauges(){
+ G.volt=mkGauge('gVolt','Voltage','V',0,500,'#60a5fa',0);
+ G.freq=mkGauge('gFreq','Frequency','Hz',0,65,'#a78bfa',1);
+ G.rpm=mkGauge('gRPM','Engine RPM','RPM',0,2000,'#f59e0b',0);
+ G.load=mkGauge('gLoad','Load','%',0,120,'#22c55e',1);
 }
 
+/* ── Annunciator definitions ── */
+const ANN=[
+ {k:'alarm',l:'Common Alarm',t:'sd'},{k:'warning',l:'Common Warning',t:'w'},{k:'shutdown',l:'Common Shutdown',t:'sd'},
+ {k:'estop',l:'Emergency Stop',t:'sd'},{k:'overspeed_sd',l:'Overspeed',t:'sd'},{k:'underspeed_sd',l:'Underspeed',t:'sd'},
+ {k:'loss_speed_sd',l:'Speed Signal Loss',t:'sd'},{k:'overfreq_sd',l:'Over-Frequency',t:'sd'},{k:'underfreq_sd',l:'Under-Frequency',t:'sd'},
+ {k:'overvolt_sd',l:'Over-Voltage',t:'sd'},{k:'undervolt_sd',l:'Under-Voltage',t:'sd'},{k:'overcurr_sd',l:'Over-Current',t:'sd'},
+ {k:'crank_fail_sd',l:'Crank Failure',t:'sd'},{k:'hi_temp_sd_in',l:'High Temp SD (input)',t:'sd'},{k:'lo_op_sd_in',l:'Low Oil Press SD (input)',t:'sd'},
+ {k:'hi_temp_sd',l:'High Temp SD (calc)',t:'sd'},{k:'lo_op_sd',l:'Low Oil Press SD (calc)',t:'sd'},
+ {k:'no_gen_sd',l:'No Generator',t:'sd'},{k:'ext_sd',l:'External Shutdown',t:'sd'},
+ {k:'lo_fuel_sd_in',l:'Low Fuel SD',t:'sd'},{k:'lo_cool_sd_in',l:'Low Coolant SD',t:'sd'},
+ {k:'lo_oil_sd_in',l:'Low Oil Level SD',t:'sd'},{k:'temp_open_sd',l:'Temp Sensor Open SD',t:'sd'},
+ {k:'op_open_sd',l:'O.P. Sensor Open SD',t:'sd'},{k:'aux_open_sd',l:'Aux Sensor Open SD',t:'sd'},{k:'aux_sd',l:'Aux Sensor SD',t:'sd'},
+ {k:'hi_temp_w_in',l:'High Temp Warning (input)',t:'w'},{k:'lo_op_w_in',l:'Low Oil Press Warning (input)',t:'w'},
+ {k:'hi_temp_w',l:'High Temp Warning (calc)',t:'w'},{k:'lo_op_w',l:'Low Oil Press Warning (calc)',t:'w'},
+ {k:'stop_fail_w',l:'Stop Failure',t:'w'},{k:'lo_fuel_w_in',l:'Low Fuel Warning',t:'w'},
+ {k:'charge_fail_w',l:'Charge Failure',t:'w'},{k:'batt_uv_w',l:'Battery Under-Voltage',t:'w'},{k:'batt_ov_w',l:'Battery Over-Voltage',t:'w'},
+ {k:'ext_w',l:'External Warning',t:'w'},{k:'loss_speed_w',l:'Speed Signal Loss Warning',t:'w'},
+ {k:'lo_cool_w_in',l:'Low Coolant Warning',t:'w'},{k:'temp_open_w',l:'Temp Sensor Open',t:'w'},
+ {k:'op_open_w',l:'O.P. Sensor Open',t:'w'},{k:'aux_open_w',l:'Aux Sensor Open',t:'w'},{k:'aux_w',l:'Aux Sensor Warning',t:'w'}
+];
+const IOS=[
+ {k:'on_load',l:'Gen On Load',c:'green'},{k:'auto_mode',l:'Auto Mode',c:'blue'},{k:'manual_mode',l:'Manual Mode',c:'amber'},
+ {k:'stop_mode',l:'Stop Mode',c:'red'},{k:'estop_in',l:'E-Stop Input',c:'red'},
+ {k:'start_relay',l:'Start Relay',c:'green'},{k:'fuel_relay',l:'Fuel Relay',c:'green'},
+ {k:'aux_in1',l:'Aux Input 1',c:'blue'},{k:'aux_in2',l:'Aux Input 2',c:'blue'},{k:'aux_in3',l:'Aux Input 3',c:'blue'},
+ {k:'aux_in4',l:'Aux Input 4',c:'blue'},{k:'aux_in5',l:'Aux Input 5',c:'blue'},{k:'aux_in6',l:'Aux Input 6',c:'blue'},
+ {k:'aux_out1',l:'Aux Output 1',c:'green'},{k:'aux_out2',l:'Aux Output 2',c:'green'},
+ {k:'aux_out3',l:'Aux Output 3',c:'green'},{k:'aux_out4',l:'Aux Output 4',c:'green'}
+];
+
+function initPanels(){
+ let ah='';
+ ANN.forEach(a=>{ah+=`<div class="ann" id="ann_${a.k}"><span class="lamp off" id="lmp_${a.k}"></span><span>${a.l}</span></div>`;});
+ document.getElementById('annPanel').innerHTML=ah;
+ let ih='';
+ IOS.forEach(io=>{ih+=`<div class="io-item" id="io_${io.k}"><span class="lamp off" id="iol_${io.k}"></span><span>${io.l}</span></div>`;});
+ document.getElementById('ioPanel').innerHTML=ih;
+}
+
+/* ── Formatters ── */
+function f(v,d){if(v===null||v===undefined)return'--';return typeof v==='number'?v.toFixed(d!==undefined?d:(v>=100?0:v>=10?1:2)):String(v);}
+
+/* ── State update ── */
 function update(d){
  if(!d)return;
- const cs=document.getElementById('connStatus');
- if(d.connected){cs.textContent='ONLINE';cs.className='status conn';}
- else{cs.textContent='OFFLINE';cs.className='status disc';}
- const ms=document.getElementById('modeStatus');
- if(d.binary){
-  if(d.binary.auto_mode)ms.textContent='AUTO';
-  else if(d.binary.manual_mode)ms.textContent='MANUAL';
-  else if(d.binary.stop_mode)ms.textContent='STOP';
-  else ms.textContent='---';
+ // Connection
+ const cb=document.getElementById('connBadge');
+ if(d.connected){cb.textContent='ONLINE';cb.className='badge badge-conn';}
+ else{cb.textContent='OFFLINE';cb.className='badge badge-disc';}
+ // Mode
+ const mb=document.getElementById('modeBadge');const b=d.binary||{};
+ if(b.auto_mode){mb.textContent='AUTO';mb.className='badge badge-auto';}
+ else if(b.manual_mode){mb.textContent='MANUAL';mb.className='badge badge-manual';}
+ else if(b.stop_mode){mb.textContent='STOP';mb.className='badge badge-stop';}
+ else{mb.textContent='---';mb.className='badge badge-mode';}
+ const s=d.sensors||{};
+ // Gauges: prefer gen_va, fallback to first available
+ const vavg=(s.gen_va!==null&&s.gen_va!==undefined)?s.gen_va:null;
+ G.volt.set(vavg);G.freq.set(s.gen_freq!=null?s.gen_freq:null);
+ G.rpm.set(s.rpm!=null?s.rpm:null);G.load.set(s.load_pct!=null?s.load_pct:null);
+ // Phase cards
+ const ids=[['pv_a','gen_va'],['pv_b','gen_vb'],['pv_c','gen_vc'],['pi_a','ia'],['pi_b','ib'],['pi_c','ic'],['pp_a','pa_kw'],['pp_b','pb_kw'],['pp_c','pc_kw']];
+ ids.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
+ // Line-line + power
+ const t=[['v_ab','gen_vab'],['v_bc','gen_vbc'],['v_ca','gen_vca'],['v_tkw','total_kw'],['v_kvar','kvar'],['v_kva','kva'],['v_pf','pf']];
+ t.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
+ // Engine
+ const eng=[['v_wt','water_temp'],['v_op','oil_press'],['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1'],['v_es','eng_status'],['v_as','auto_status']];
+ eng.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
+ // Runtime
+ let hours=s.total_hours!=null?Math.floor(s.total_hours):0;
+ let mins=s.total_min!=null?Math.floor(s.total_min):0;
+ document.getElementById('rt_hrs').textContent=hours.toLocaleString()+'h '+String(mins).padStart(2,'0')+'m';
+ document.getElementById('rt_starts').textContent=s.total_starts!=null?Math.floor(s.total_starts).toLocaleString():'--';
+ document.getElementById('rt_kwh').textContent=s.total_kwh!=null?Math.floor(s.total_kwh).toLocaleString():'--';
+ document.getElementById('rt_fw').textContent=s.sw_ver!=null?'v'+f(s.sw_ver,1):'--';
+ document.getElementById('rt_hw').textContent=s.hw_ver!=null?'v'+f(s.hw_ver,1):'--';
+ // Header sub with controller time
+ if(s.ctrl_hour!=null){
+  const ts=String(Math.floor(s.ctrl_hour)).padStart(2,'0')+':'+String(Math.floor(s.ctrl_min||0)).padStart(2,'0')+':'+String(Math.floor(s.ctrl_sec||0)).padStart(2,'0');
+  document.getElementById('hdrTime').textContent='Controller '+ts;
  }
- if(d.sensors){for(const[k,v]of Object.entries(S)){const el=document.getElementById('s_'+k);if(el)el.textContent=fmtVal(d.sensors[k],v.u);}}
- if(d.binary){
-  for(const[k,v]of Object.entries(A)){
-   const dot=document.getElementById('d_'+k);if(!dot)continue;
-   const on=d.binary[k]===true;
-   dot.className='dot '+(on?(v.t==='w'?'warn-on':'on'):'off');
-  }
-  for(const[k,v]of Object.entries(IO)){
-   const dot=document.getElementById('d_'+k);if(!dot)continue;
-   const on=d.binary[k]===true;
-   dot.className='dot '+(on?(v.t==='sd'?'on':'ok'):'off');
-  }
- }
-}
-
-function poll(){
- fetch('/api/status').then(r=>r.json()).then(update).catch(()=>{
-  document.getElementById('connStatus').textContent='NO LINK';
-  document.getElementById('connStatus').className='status disc';
+ // Annunciator
+ ANN.forEach(a=>{
+  const on=b[a.k]===true;
+  const lamp=document.getElementById('lmp_'+a.k);
+  const row=document.getElementById('ann_'+a.k);
+  if(lamp)lamp.className='lamp '+(on?(a.t==='w'?'amber':'red'):'off');
+  if(row)row.className='ann'+(on?(a.t==='w'?' active-w':' active-sd'):'');
+ });
+ // I/O
+ IOS.forEach(io=>{
+  const on=b[io.k]===true;
+  const lamp=document.getElementById('iol_'+io.k);
+  const row=document.getElementById('io_'+io.k);
+  if(lamp)lamp.className='lamp '+(on?io.c:'off');
+  if(row)row.className='io-item'+(on?' on':'');
  });
 }
 
-function toast(msg,ms){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',ms||2000);}
-
-function cmd(coil){
- fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coil:coil})})
- .then(r=>r.json()).then(d=>{toast(d.ok?'Command sent':'Command failed');setTimeout(poll,500);})
- .catch(()=>toast('Error sending command'));
+/* ── Polling ── */
+let fails=0;
+function poll(){
+ fetch('/api/status').then(r=>r.json()).then(d=>{fails=0;update(d);}).catch(()=>{
+  fails++;
+  const cb=document.getElementById('connBadge');
+  cb.textContent=fails>2?'NO LINK':'...';cb.className='badge badge-disc';
+ });
 }
 
-init();poll();setInterval(poll,3000);
+/* ── Command with confirmation ── */
+let pendingCoil=null;
+function confirmCmd(coil,title,msg,style){
+ pendingCoil=coil;
+ document.getElementById('modalTitle').textContent=title;
+ document.getElementById('modalMsg').textContent=msg;
+ const ok=document.getElementById('modalOk');
+ ok.className=style==='danger'?'m-danger':'m-confirm';
+ ok.textContent='Confirm';
+ document.getElementById('confirmModal').classList.add('show');
+}
+function closeModal(){document.getElementById('confirmModal').classList.remove('show');pendingCoil=null;}
+function execCmd(){
+ if(pendingCoil===null)return;
+ const coil=pendingCoil;closeModal();
+ fetch('/api/command',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coil:coil})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Command sent successfully':'Command failed','ok');setTimeout(poll,500);})
+ .catch(()=>toast('Communication error','err'));
+}
+function toast(msg,cls){
+ const t=document.getElementById('toast');t.textContent=msg;t.className='toast show '+(cls||'');
+ setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+/* ── Init ── */
+initGauges();initPanels();poll();setInterval(poll,2500);
 </script>
 </body>
 </html>)rawliteral";
