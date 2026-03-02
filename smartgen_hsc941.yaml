@@ -1,0 +1,392 @@
+# SmartGen HSC941 Generator Controller - ESPHome Configuration
+# Uses custom Modbus RTU implementation over RS485 (no ESPHome modbus dependency)
+#
+# Adjust pins, address, and which sensors you need for your setup.
+# You can remove any sensor/binary_sensor/button you don't need.
+
+substitutions:
+  device_name: smartgen-hsc941
+  friendly_name: "Generator"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${device_name} Fallback"
+    password: !secret ap_password
+
+captive_portal:
+
+# Load the SmartGen HSC941 component from local directory
+external_components:
+  - source:
+      type: local
+      path: components
+
+# ============================================================
+#  SmartGen HSC941 Controller Hub
+# ============================================================
+smartgen_hsc941:
+  id: genset
+  address: 1                    # Modbus slave address (default: 1)
+  baud_rate: 9600               # Must match controller setting
+  tx_pin: GPIO17                # RS485 TX pin on your ESP32-S3
+  rx_pin: GPIO18                # RS485 RX pin on your ESP32-S3
+  # flow_control_pin: GPIO8     # Uncomment if your RS485 transceiver needs DE/RE control
+  uart_num: 1                   # ESP32 UART number (0-2, default: 1)
+  update_interval: 5s           # How often to poll the controller
+
+# ============================================================
+#  Analog Sensors (Function Code 03H - Holding Registers)
+# ============================================================
+sensor:
+  - platform: smartgen_hsc941
+    smartgen_hsc941_id: genset
+
+    # --- Generator Voltages ---
+    gen_voltage_a:
+      name: "${friendly_name} Voltage Phase A"
+    gen_voltage_b:
+      name: "${friendly_name} Voltage Phase B"
+    gen_voltage_c:
+      name: "${friendly_name} Voltage Phase C"
+    gen_voltage_ab:
+      name: "${friendly_name} Voltage AB"
+    gen_voltage_bc:
+      name: "${friendly_name} Voltage BC"
+    gen_voltage_ca:
+      name: "${friendly_name} Voltage CA"
+
+    # --- Frequency ---
+    gen_frequency:
+      name: "${friendly_name} Frequency"
+
+    # --- Phase Currents ---
+    phase_a_current:
+      name: "${friendly_name} Current Phase A"
+    phase_b_current:
+      name: "${friendly_name} Current Phase B"
+    phase_c_current:
+      name: "${friendly_name} Current Phase C"
+
+    # --- Temperature & Pressure ---
+    water_temperature:
+      name: "${friendly_name} Coolant Temperature"
+    water_temp_resistance:
+      name: "${friendly_name} Coolant Temp Resistance"
+      entity_category: diagnostic
+    oil_pressure:
+      name: "${friendly_name} Oil Pressure"
+    oil_pressure_resistance:
+      name: "${friendly_name} Oil Pressure Resistance"
+      entity_category: diagnostic
+
+    # --- Aux Sensor ---
+    aux_sensor_1:
+      name: "${friendly_name} Aux Sensor 1"
+    aux_sensor_1_resistance:
+      name: "${friendly_name} Aux Sensor 1 Resistance"
+      entity_category: diagnostic
+
+    # --- Engine ---
+    engine_speed:
+      name: "${friendly_name} Engine Speed"
+
+    # --- Battery ---
+    battery_voltage:
+      name: "${friendly_name} Battery Voltage"
+    charge_voltage:
+      name: "${friendly_name} D+ Charge Voltage"
+
+    # --- Controller Date/Time ---
+    controller_year:
+      name: "${friendly_name} Controller Year"
+      entity_category: diagnostic
+    controller_month:
+      name: "${friendly_name} Controller Month"
+      entity_category: diagnostic
+    controller_day:
+      name: "${friendly_name} Controller Day"
+      entity_category: diagnostic
+    controller_weekday:
+      name: "${friendly_name} Controller Weekday"
+      entity_category: diagnostic
+    controller_hour:
+      name: "${friendly_name} Controller Hour"
+      entity_category: diagnostic
+    controller_minute:
+      name: "${friendly_name} Controller Minute"
+      entity_category: diagnostic
+    controller_second:
+      name: "${friendly_name} Controller Second"
+      entity_category: diagnostic
+
+    # --- Engine Status ---
+    engine_running_status:
+      name: "${friendly_name} Engine Running Status"
+    engine_delay:
+      name: "${friendly_name} Engine Delay"
+    auto_running_status:
+      name: "${friendly_name} Auto Running Status"
+    auto_delay:
+      name: "${friendly_name} Auto Delay"
+
+    # --- Accumulated Values ---
+    engine_total_hours:
+      name: "${friendly_name} Total Running Hours"
+    engine_total_minutes:
+      name: "${friendly_name} Running Minutes"
+      entity_category: diagnostic
+    engine_total_seconds:
+      name: "${friendly_name} Running Seconds"
+      entity_category: diagnostic
+    total_start_times:
+      name: "${friendly_name} Total Starts"
+    total_energy:
+      name: "${friendly_name} Total Energy"
+
+    # --- Versions ---
+    software_version:
+      name: "${friendly_name} Software Version"
+      entity_category: diagnostic
+    hardware_version:
+      name: "${friendly_name} Hardware Version"
+      entity_category: diagnostic
+
+    # --- Phase Angles ---
+    phase_a_angle:
+      name: "${friendly_name} Phase A Angle"
+      entity_category: diagnostic
+    phase_b_angle:
+      name: "${friendly_name} Phase B Angle"
+      entity_category: diagnostic
+    phase_c_angle:
+      name: "${friendly_name} Phase C Angle"
+      entity_category: diagnostic
+
+    # --- Power ---
+    phase_a_active_power:
+      name: "${friendly_name} Active Power Phase A"
+    phase_b_active_power:
+      name: "${friendly_name} Active Power Phase B"
+    phase_c_active_power:
+      name: "${friendly_name} Active Power Phase C"
+    total_active_power:
+      name: "${friendly_name} Total Active Power"
+    reactive_power:
+      name: "${friendly_name} Reactive Power"
+    apparent_power:
+      name: "${friendly_name} Apparent Power"
+    power_factor:
+      name: "${friendly_name} Power Factor"
+    output_load_percent:
+      name: "${friendly_name} Output Load"
+
+    # --- Release Date ---
+    release_year:
+      name: "${friendly_name} Release Year"
+      entity_category: diagnostic
+    release_month:
+      name: "${friendly_name} Release Month"
+      entity_category: diagnostic
+    release_day:
+      name: "${friendly_name} Release Day"
+      entity_category: diagnostic
+
+# ============================================================
+#  Binary Sensors (Function Code 01H - Coils / Alarms / Status)
+# ============================================================
+binary_sensor:
+  - platform: smartgen_hsc941
+    smartgen_hsc941_id: genset
+
+    # --- Summary Alarms ---
+    common_alarm:
+      name: "${friendly_name} Common Alarm"
+    common_warning:
+      name: "${friendly_name} Common Warning"
+    common_shutdown:
+      name: "${friendly_name} Common Shutdown"
+
+    # --- Operating Status ---
+    gen_on_load:
+      name: "${friendly_name} Generator On Load"
+    in_auto_mode:
+      name: "${friendly_name} Auto Mode"
+    in_manual_mode:
+      name: "${friendly_name} Manual Mode"
+    in_stop_mode:
+      name: "${friendly_name} Stop Mode"
+
+    # --- Emergency ---
+    emergency_stop:
+      name: "${friendly_name} Emergency Stop"
+    emergency_stop_input:
+      name: "${friendly_name} E-Stop Input"
+
+    # --- Shutdown Alarms ---
+    overspeed_shutdown:
+      name: "${friendly_name} Overspeed Shutdown"
+    underspeed_shutdown:
+      name: "${friendly_name} Underspeed Shutdown"
+    loss_speed_signal_shutdown:
+      name: "${friendly_name} Loss Speed Signal Shutdown"
+    gen_overfrequency_shutdown:
+      name: "${friendly_name} Overfrequency Shutdown"
+    gen_underfrequency_shutdown:
+      name: "${friendly_name} Underfrequency Shutdown"
+    gen_overvoltage_shutdown:
+      name: "${friendly_name} Overvoltage Shutdown"
+    gen_undervoltage_shutdown:
+      name: "${friendly_name} Undervoltage Shutdown"
+    gen_overcurrent_shutdown:
+      name: "${friendly_name} Overcurrent Shutdown"
+    crank_failure_shutdown:
+      name: "${friendly_name} Crank Failure Shutdown"
+    no_gen_shutdown:
+      name: "${friendly_name} No Gen Shutdown"
+    external_shutdown_input:
+      name: "${friendly_name} External Shutdown"
+
+    # --- Input-based Shutdowns ---
+    high_temp_shutdown_in:
+      name: "${friendly_name} High Temp Shutdown (Input)"
+    low_oil_pressure_shutdown_in:
+      name: "${friendly_name} Low Oil Pressure Shutdown (Input)"
+    low_fuel_level_shutdown_in:
+      name: "${friendly_name} Low Fuel Shutdown (Input)"
+    low_coolant_level_shutdown_in:
+      name: "${friendly_name} Low Coolant Shutdown (Input)"
+
+    # --- Analog-derived Shutdowns ---
+    high_temp_shutdown:
+      name: "${friendly_name} High Temp Shutdown"
+    low_oil_pressure_shutdown:
+      name: "${friendly_name} Low Oil Pressure Shutdown"
+
+    # --- Warnings ---
+    high_temp_warning_in:
+      name: "${friendly_name} High Temp Warning (Input)"
+    low_oil_pressure_warning_in:
+      name: "${friendly_name} Low Oil Pressure Warning (Input)"
+    stop_failure_warning:
+      name: "${friendly_name} Stop Failure Warning"
+    low_fuel_level_warning_in:
+      name: "${friendly_name} Low Fuel Warning (Input)"
+    charging_failure_warning:
+      name: "${friendly_name} Charging Failure Warning"
+    battery_undervoltage_warning:
+      name: "${friendly_name} Battery Undervoltage Warning"
+    battery_overvoltage_warning:
+      name: "${friendly_name} Battery Overvoltage Warning"
+    external_warning_input:
+      name: "${friendly_name} External Warning"
+    loss_speed_signal_warning:
+      name: "${friendly_name} Loss Speed Signal Warning"
+    low_coolant_level_warning_in:
+      name: "${friendly_name} Low Coolant Warning (Input)"
+
+    # --- Analog-derived Warnings ---
+    high_temp_warning:
+      name: "${friendly_name} High Temp Warning"
+    low_oil_pressure_warning:
+      name: "${friendly_name} Low Oil Pressure Warning"
+
+    # --- Sensor Open Warnings ---
+    temp_sensor_open_warning:
+      name: "${friendly_name} Temp Sensor Open Warning"
+      entity_category: diagnostic
+    oil_pressure_sensor_open_warning:
+      name: "${friendly_name} OP Sensor Open Warning"
+      entity_category: diagnostic
+    aux_sensor_open_warning:
+      name: "${friendly_name} Aux Sensor Open Warning"
+      entity_category: diagnostic
+    aux_sensor_warning:
+      name: "${friendly_name} Aux Sensor Warning"
+
+    # --- Sensor Open Shutdowns ---
+    temp_sensor_open_shutdown:
+      name: "${friendly_name} Temp Sensor Open Shutdown"
+    oil_pressure_sensor_open_shutdown:
+      name: "${friendly_name} OP Sensor Open Shutdown"
+    aux_sensor_open_shutdown:
+      name: "${friendly_name} Aux Sensor Open Shutdown"
+    aux_sensor_shutdown:
+      name: "${friendly_name} Aux Sensor Shutdown"
+    low_engine_oil_level_shutdown_in:
+      name: "${friendly_name} Low Engine Oil Level Shutdown (Input)"
+
+    # --- Auxiliary Inputs ---
+    aux_input_1:
+      name: "${friendly_name} Aux Input 1"
+    aux_input_2:
+      name: "${friendly_name} Aux Input 2"
+    aux_input_3:
+      name: "${friendly_name} Aux Input 3"
+    aux_input_4:
+      name: "${friendly_name} Aux Input 4"
+    aux_input_5:
+      name: "${friendly_name} Aux Input 5"
+    aux_input_6:
+      name: "${friendly_name} Aux Input 6"
+
+    # --- Relay Outputs (read-back) ---
+    start_relay_output:
+      name: "${friendly_name} Start Relay"
+    fuel_relay_output:
+      name: "${friendly_name} Fuel Relay"
+    aux_output_1:
+      name: "${friendly_name} Aux Output 1"
+    aux_output_2:
+      name: "${friendly_name} Aux Output 2"
+    aux_output_3:
+      name: "${friendly_name} Aux Output 3"
+    aux_output_4:
+      name: "${friendly_name} Aux Output 4"
+
+# ============================================================
+#  Control Buttons (Function Code 05H - Write Single Coil)
+# ============================================================
+button:
+  - platform: smartgen_hsc941
+    smartgen_hsc941_id: genset
+
+    engine_start:
+      name: "${friendly_name} Engine Start"
+    engine_stop:
+      name: "${friendly_name} Engine Stop"
+    engine_auto:
+      name: "${friendly_name} Set Auto Mode"
+    engine_manual:
+      name: "${friendly_name} Set Manual Mode"
+    gen_switch_on:
+      name: "${friendly_name} Generator Switch On"
+    gen_switch_off:
+      name: "${friendly_name} Generator Switch Off"
+    fault_reset:
+      name: "${friendly_name} Fault Reset"
