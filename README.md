@@ -30,6 +30,74 @@ external_components:
     components: [smartgen_hsc941]
 ```
 
+## Web Dashboard (Companion Component)
+
+This repository also includes an optional **`smartgen_hsc941_web`** companion component that provides a live web-based dashboard for monitoring and controlling the generator directly from a browser — no Home Assistant required.
+
+### Features
+
+- Single-page dark-themed dashboard with responsive grid layout
+- Live-updating sensor values (electrical, engine, power, runtime)
+- Alarm/warning/shutdown status indicators with colour-coded dots
+- Control buttons: Start, Stop, Auto, Manual, Gen ON, Gen OFF, Fault Reset
+- REST API: `GET /api/status` (JSON), `POST /api/command` (coil writes)
+- Built on ESP-IDF `esp_http_server` — no Arduino dependencies
+- PSRAM-friendly: large allocations use SPIRAM via default allocator, dashboard HTML lives in flash `.rodata`
+
+### Installation
+
+Add both components in your external_components declaration:
+
+```yaml
+external_components:
+  - source:
+      type: git
+      url: https://github.com/RAR/esphome-smartgen-hsc941
+      ref: main
+    components: [smartgen_hsc941, smartgen_hsc941_web]
+```
+
+### Configuration
+
+```yaml
+smartgen_hsc941_web:
+  smartgen_hsc941_id: genset   # ID of the smartgen_hsc941 hub
+  port: 8080                   # HTTP port (default: 8080)
+  # css_url: ""                # Optional: external CSS URL override
+  # js_url: ""                 # Optional: external JS URL override
+```
+
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `smartgen_hsc941_id` | **Yes** | — | ID of the `smartgen_hsc941` hub component |
+| `port` | No | `8080` | TCP port for the web server |
+| `css_url` | No | `""` | External CSS URL (overrides built-in styles) |
+| `js_url` | No | `""` | External JS URL (overrides built-in script) |
+
+### Usage
+
+Once flashed, open `http://<device-ip>:8080` in a browser. The dashboard auto-refreshes every 3 seconds.
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | Dashboard HTML page |
+| `GET` | `/api/status` | Full JSON status (sensors + binary sensors + connection state) |
+| `POST` | `/api/command` | Send coil command. Body: `{"coil": N}` where N is 0,1,3,4,5,6,7 |
+
+**Coil command values:**
+
+| Coil | Action |
+|------|--------|
+| 0 | Engine Start |
+| 1 | Engine Stop |
+| 3 | Auto Mode |
+| 4 | Manual Mode |
+| 5 | Gen Switch OFF |
+| 6 | Gen Switch ON |
+| 7 | Fault Reset |
+
 ## Configuration
 
 ### Hub
