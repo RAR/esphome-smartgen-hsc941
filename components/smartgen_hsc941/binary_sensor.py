@@ -77,8 +77,10 @@ CONF_LOW_OP_WARNING = "low_oil_pressure_warning"
 
 
 def bs_schema(device_class=DEVICE_CLASS_PROBLEM, icon=None):
-    kwargs = {"device_class": device_class}
-    if icon:
+    kwargs = {}
+    if device_class is not None:
+        kwargs["device_class"] = device_class
+    if icon is not None:
         kwargs["icon"] = icon
     return binary_sensor.binary_sensor_schema(**kwargs)
 
