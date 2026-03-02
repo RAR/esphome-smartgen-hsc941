@@ -2,6 +2,7 @@
 #include "esphome/core/log.h"
 #include "esphome/core/application.h"
 #include <cstring>
+#include <ctime>
 
 namespace esphome {
 namespace smartgen_hsc941_web {
@@ -170,6 +171,27 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .relay-state{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;flex-shrink:0;min-width:28px;text-align:center}
 .relay-item .relay-state{background:#ffffff08;color:var(--faint)}
 .relay-item.relay-on .relay-state{background:#22c55e28;color:var(--green)}
+
+/* ── Exercise Schedule ── */
+.ex-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:600px){.ex-form{grid-template-columns:1fr}}
+.ex-field{display:flex;flex-direction:column;gap:4px}
+.ex-field label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--dim)}
+.ex-field select,.ex-field input[type=number]{background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:.82rem;font-family:inherit;outline:none;transition:border .2s}
+.ex-field select:focus,.ex-field input[type=number]:focus{border-color:var(--blue)}
+.ex-field select option{background:var(--card);color:var(--text)}
+.ex-row{display:flex;align-items:center;gap:12px;grid-column:1/-1}
+.ex-toggle{display:flex;align-items:center;gap:10px}
+.ex-toggle span{font-size:.82rem;font-weight:600}
+.ex-btns{display:flex;gap:8px;grid-column:1/-1;margin-top:4px}
+.ex-btn{padding:10px 20px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer;border:none;transition:all .15s;text-transform:uppercase;letter-spacing:.04em}
+.ex-btn:hover{filter:brightness(1.1)}
+.ex-btn-save{background:var(--blue);color:#fff}
+.ex-btn-run{background:var(--green);color:#fff}
+.ex-btn-stop{background:var(--red);color:#fff}
+.ex-status{grid-column:1/-1;padding:10px;background:var(--surface);border-radius:8px;font-size:.78rem}
+.ex-status .ex-st-label{color:var(--dim);font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.ex-status .ex-st-value{font-weight:700;margin-left:6px}
 </style>
 </head>
 <body>
@@ -275,6 +297,58 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="card">
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M7 8v8m5-8v8m5-8v8"/></svg><h2>Board Relays</h2></div>
   <div class="card-body"><div class="io-grid" id="relayPanel"></div></div>
+ </div>
+</div>
+
+<!-- Exercise Schedule -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg><h2>Exercise Schedule</h2></div>
+  <div class="card-body">
+   <div class="ex-form" id="exForm">
+    <div class="ex-row">
+     <div class="ex-toggle">
+      <label class="toggle"><input type="checkbox" id="exEnabled"><span class="slider"></span></label>
+      <span id="exEnabledLbl">Disabled</span>
+     </div>
+    </div>
+    <div class="ex-field">
+     <label>Day</label>
+     <select id="exDay">
+      <option value="0">Sunday</option><option value="1">Monday</option><option value="2">Tuesday</option>
+      <option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option>
+      <option value="6">Saturday</option><option value="7">Every Day</option>
+     </select>
+    </div>
+    <div class="ex-field">
+     <label>Duration (minutes)</label>
+     <input type="number" id="exDuration" min="1" max="120" value="15">
+    </div>
+    <div class="ex-field">
+     <label>Hour (0-23)</label>
+     <input type="number" id="exHour" min="0" max="23" value="10">
+    </div>
+    <div class="ex-field">
+     <label>Minute (0-59)</label>
+     <input type="number" id="exMinute" min="0" max="59" value="0">
+    </div>
+    <div class="ex-row">
+     <div class="ex-toggle">
+      <label class="toggle"><input type="checkbox" id="exXfer"><span class="slider"></span></label>
+      <span>Transfer Load During Exercise</span>
+     </div>
+    </div>
+    <div class="ex-btns">
+     <button class="ex-btn ex-btn-save" onclick="saveExercise()">Save</button>
+     <button class="ex-btn ex-btn-run" id="exRunBtn" onclick="runExercise()">Run Now</button>
+     <button class="ex-btn ex-btn-stop" id="exStopBtn" onclick="stopExercise()" style="display:none">Stop</button>
+    </div>
+    <div class="ex-status" id="exStatus">
+     <span class="ex-st-label">Status:</span><span class="ex-st-value" id="exState">Idle</span>
+     <span class="ex-st-label" style="margin-left:16px">Last Run:</span><span class="ex-st-value" id="exLastRun">Never</span>
+    </div>
+   </div>
+  </div>
  </div>
 </div>
 
@@ -526,8 +600,73 @@ function toggleRelay(idx,on){
  }).catch(()=>toast('Communication error','err'));
 }
 
+/* ── Exercise Schedule ── */
+let exLoaded=false;
+function loadExercise(){
+ fetch('/api/exercise').then(r=>r.json()).then(d=>{
+  document.getElementById('exEnabled').checked=d.enabled;
+  document.getElementById('exEnabledLbl').textContent=d.enabled?'Enabled':'Disabled';
+  document.getElementById('exDay').value=d.day;
+  document.getElementById('exHour').value=d.hour;
+  document.getElementById('exMinute').value=d.minute;
+  document.getElementById('exDuration').value=d.duration;
+  document.getElementById('exXfer').checked=!!d.load_transfer;
+  updateExStatus(d);
+  exLoaded=true;
+ }).catch(()=>{});
+}
+function updateExStatus(d){
+ const stEl=document.getElementById('exState');
+ const running=d.state&&d.state!=='idle';
+ if(running){
+  let txt=d.state.charAt(0).toUpperCase()+d.state.slice(1);
+  if(d.remaining>0)txt+=' ('+Math.floor(d.remaining/60)+'m '+String(d.remaining%60).padStart(2,'0')+'s remaining)';
+  stEl.textContent=txt;
+  stEl.style.color='var(--green)';
+  document.getElementById('exRunBtn').style.display='none';
+  document.getElementById('exStopBtn').style.display='';
+ } else {
+  stEl.textContent='Idle';
+  stEl.style.color='var(--dim)';
+  document.getElementById('exRunBtn').style.display='';
+  document.getElementById('exStopBtn').style.display='none';
+ }
+ document.getElementById('exLastRun').textContent=d.last_run||'Never';
+}
+function pollExercise(){
+ if(!exLoaded)return;
+ fetch('/api/exercise').then(r=>r.json()).then(d=>updateExStatus(d)).catch(()=>{});
+}
+function saveExercise(){
+ const cfg={
+  enabled:document.getElementById('exEnabled').checked,
+  day:parseInt(document.getElementById('exDay').value),
+  hour:parseInt(document.getElementById('exHour').value),
+  minute:parseInt(document.getElementById('exMinute').value),
+  duration:parseInt(document.getElementById('exDuration').value),
+  load_transfer:document.getElementById('exXfer').checked
+ };
+ fetch('/api/exercise',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Exercise config saved':'Save failed',d.ok?'ok':'err');loadExercise();})
+ .catch(()=>toast('Communication error','err'));
+}
+function runExercise(){
+ fetch('/api/exercise',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start'})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Exercise started':'Failed: '+(d.error||''),d.ok?'ok':'err');})
+ .catch(()=>toast('Communication error','err'));
+}
+function stopExercise(){
+ fetch('/api/exercise',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'stop'})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Exercise stopped':'Failed',d.ok?'ok':'err');})
+ .catch(()=>toast('Communication error','err'));
+}
+document.getElementById('exEnabled').addEventListener('change',function(){
+ document.getElementById('exEnabledLbl').textContent=this.checked?'Enabled':'Disabled';
+});
+
 /* ── Init ── */
 initGauges();initPanels();poll();setInterval(poll,2500);
+loadExercise();setInterval(pollExercise,3000);
 </script>
 </body>
 </html>)rawliteral";
@@ -538,7 +677,21 @@ initGauges();initPanels();poll();setInterval(poll,2500);
 
 void SmartgenHSC941Web::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SmartGen HSC941 Web UI...");
+  this->load_exercise_config_();
   this->start_server_();
+}
+
+void SmartgenHSC941Web::loop() {
+  // Check exercise schedule every 1 second
+  uint32_t now = millis();
+  if (now - this->last_exercise_check_ >= 1000) {
+    this->last_exercise_check_ = now;
+    if (this->exercise_state_ != ExerciseState::IDLE) {
+      this->exercise_step_();
+    } else {
+      this->check_exercise_schedule_();
+    }
+  }
 }
 
 void SmartgenHSC941Web::dump_config() {
@@ -549,6 +702,225 @@ void SmartgenHSC941Web::dump_config() {
   } else {
     ESP_LOGCONFIG(TAG, "  Server: FAILED to start");
   }
+  ESP_LOGCONFIG(TAG, "  Exercise: %s", this->exercise_cfg_.enabled ? "enabled" : "disabled");
+  if (this->exercise_cfg_.enabled) {
+    const char *days[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat","Daily"};
+    ESP_LOGCONFIG(TAG, "  Exercise schedule: %s %02u:%02u for %u min",
+                  days[this->exercise_cfg_.day > 7 ? 7 : this->exercise_cfg_.day],
+                  this->exercise_cfg_.hour, this->exercise_cfg_.minute,
+                  this->exercise_cfg_.duration_min);
+  }
+}
+
+// ============================================================
+//  Exercise NVS persistence
+// ============================================================
+static const char *NVS_NAMESPACE = "genset_ex";
+static const char *NVS_KEY = "config";
+
+void SmartgenHSC941Web::load_exercise_config_() {
+  nvs_handle_t handle;
+  esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGD(TAG, "No exercise config in NVS (first boot)");
+    return;
+  }
+  size_t len = 0;
+  err = nvs_get_str(handle, NVS_KEY, nullptr, &len);
+  if (err == ESP_OK && len > 0) {
+    char *buf = new char[len];
+    nvs_get_str(handle, NVS_KEY, buf, &len);
+    // Simple parse: {"enabled":true,"day":1,"hour":10,"minute":0,"duration":15,"load_transfer":false}
+    auto find_int = [&](const char *key) -> int {
+      const char *p = strstr(buf, key);
+      if (!p) return -1;
+      p = strchr(p, ':');
+      if (!p) return -1;
+      return atoi(p + 1);
+    };
+    this->exercise_cfg_.enabled = (strstr(buf, "\"enabled\":true") != nullptr);
+    int v;
+    if ((v = find_int("\"day\"")) >= 0) this->exercise_cfg_.day = v;
+    if ((v = find_int("\"hour\"")) >= 0) this->exercise_cfg_.hour = v;
+    if ((v = find_int("\"minute\"")) >= 0) this->exercise_cfg_.minute = v;
+    if ((v = find_int("\"duration\"")) >= 0) this->exercise_cfg_.duration_min = v;
+    this->exercise_cfg_.load_transfer = (strstr(buf, "\"load_transfer\":true") != nullptr);
+    delete[] buf;
+    ESP_LOGI(TAG, "Loaded exercise config: %s day=%u %02u:%02u dur=%umin xfer=%s",
+             this->exercise_cfg_.enabled ? "ON" : "OFF",
+             this->exercise_cfg_.day, this->exercise_cfg_.hour, this->exercise_cfg_.minute,
+             this->exercise_cfg_.duration_min,
+             this->exercise_cfg_.load_transfer ? "yes" : "no");
+  }
+  nvs_close(handle);
+}
+
+void SmartgenHSC941Web::save_exercise_config_() {
+  nvs_handle_t handle;
+  esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS for writing: %s", esp_err_to_name(err));
+    return;
+  }
+  char json[192];
+  snprintf(json, sizeof(json),
+           "{\"enabled\":%s,\"day\":%u,\"hour\":%u,\"minute\":%u,\"duration\":%u,\"load_transfer\":%s}",
+           this->exercise_cfg_.enabled ? "true" : "false",
+           this->exercise_cfg_.day, this->exercise_cfg_.hour, this->exercise_cfg_.minute,
+           this->exercise_cfg_.duration_min,
+           this->exercise_cfg_.load_transfer ? "true" : "false");
+  nvs_set_str(handle, NVS_KEY, json);
+  nvs_commit(handle);
+  nvs_close(handle);
+  ESP_LOGI(TAG, "Saved exercise config: %s", json);
+}
+
+// ============================================================
+//  Exercise scheduler logic
+// ============================================================
+
+uint32_t SmartgenHSC941Web::get_exercise_remaining_sec() const {
+  if (this->exercise_state_ == ExerciseState::IDLE) return 0;
+  uint32_t elapsed_ms = millis() - this->exercise_start_time_;
+  uint32_t total_ms = this->exercise_cfg_.duration_min * 60U * 1000U;
+  if (elapsed_ms >= total_ms) return 0;
+  return (total_ms - elapsed_ms) / 1000;
+}
+
+void SmartgenHSC941Web::check_exercise_schedule_() {
+  if (!this->exercise_cfg_.enabled) return;
+  if (!this->controller_ || !this->controller_->is_connected()) return;
+
+  time_t now_t = time(nullptr);
+  if (now_t < 1704067200) return;  // Time not synced yet (before 2024-01-01)
+  struct tm *now_tm = localtime(&now_t);
+  if (!now_tm) return;
+
+  uint8_t wday = now_tm->tm_wday;  // 0=Sun
+  uint8_t hour = now_tm->tm_hour;
+  uint8_t minute = now_tm->tm_min;
+
+  // Reset trigger guard on new day
+  if (wday != this->exercise_last_trigger_day_) {
+    this->exercise_triggered_today_ = false;
+    this->exercise_last_trigger_day_ = wday;
+  }
+
+  if (this->exercise_triggered_today_) return;
+
+  // Check if schedule matches
+  bool day_match = (this->exercise_cfg_.day == 7) || (this->exercise_cfg_.day == wday);
+  if (day_match && hour == this->exercise_cfg_.hour && minute == this->exercise_cfg_.minute) {
+    this->exercise_triggered_today_ = true;
+    ESP_LOGI(TAG, "Exercise schedule triggered!");
+    this->start_exercise_();
+  }
+}
+
+void SmartgenHSC941Web::start_exercise_() {
+  if (this->exercise_state_ != ExerciseState::IDLE) return;
+  if (!this->controller_) return;
+
+  ESP_LOGI(TAG, "Starting exercise: %u minutes, load_transfer=%s",
+           this->exercise_cfg_.duration_min,
+           this->exercise_cfg_.load_transfer ? "yes" : "no");
+
+  // Switch to manual mode, then start engine
+  this->controller_->write_coil(4, true);  // Manual mode
+  this->exercise_state_ = ExerciseState::STARTING;
+  this->exercise_start_time_ = millis();
+
+  // Record last run timestamp
+  time_t now_t = time(nullptr);
+  struct tm *now_tm = localtime(&now_t);
+  if (now_tm) {
+    char ts[32];
+    strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M", now_tm);
+    this->exercise_last_run_ = ts;
+  }
+}
+
+void SmartgenHSC941Web::exercise_step_() {
+  if (!this->controller_) {
+    this->exercise_state_ = ExerciseState::IDLE;
+    return;
+  }
+
+  uint32_t elapsed_ms = millis() - this->exercise_start_time_;
+
+  switch (this->exercise_state_) {
+    case ExerciseState::STARTING:
+      // 3 second delay after manual mode, then send start
+      if (elapsed_ms > 3000 && elapsed_ms < 5000) {
+        this->controller_->write_coil(0, true);  // Start engine
+      }
+      // After 10s, assume engine is running (or cranking)
+      if (elapsed_ms > 10000) {
+        this->exercise_state_ = ExerciseState::RUNNING;
+        this->exercise_start_time_ = millis();  // Reset for duration timer
+        ESP_LOGI(TAG, "Exercise: engine start sent, now running for %u min", this->exercise_cfg_.duration_min);
+
+        // Optionally close transfer switch
+        if (this->exercise_cfg_.load_transfer) {
+          this->controller_->write_coil(6, true);  // Gen switch on
+          ESP_LOGI(TAG, "Exercise: transfer switch closed");
+        }
+      }
+      break;
+
+    case ExerciseState::RUNNING: {
+      uint32_t duration_ms = this->exercise_cfg_.duration_min * 60U * 1000U;
+      if (elapsed_ms >= duration_ms) {
+        ESP_LOGI(TAG, "Exercise: duration complete, stopping");
+        // Open transfer switch first if it was closed
+        if (this->exercise_cfg_.load_transfer) {
+          this->controller_->write_coil(5, true);  // Gen switch off
+          ESP_LOGI(TAG, "Exercise: transfer switch opened");
+        }
+        this->exercise_state_ = ExerciseState::COOLDOWN;
+        this->exercise_cooldown_start_ = millis();
+      }
+      break;
+    }
+
+    case ExerciseState::COOLDOWN:
+      // Wait 10 seconds for transfer switch to open before stopping engine
+      if (millis() - this->exercise_cooldown_start_ > 10000) {
+        this->controller_->write_coil(1, true);  // Stop engine
+        this->exercise_state_ = ExerciseState::STOPPING;
+        ESP_LOGI(TAG, "Exercise: stop command sent");
+      }
+      break;
+
+    case ExerciseState::STOPPING:
+      // Wait 5 seconds then return to auto mode
+      if (millis() - this->exercise_cooldown_start_ > 15000) {
+        this->controller_->write_coil(3, true);  // Auto mode
+        this->exercise_state_ = ExerciseState::IDLE;
+        ESP_LOGI(TAG, "Exercise: complete, returned to auto mode");
+      }
+      break;
+
+    case ExerciseState::IDLE:
+      break;
+  }
+}
+
+void SmartgenHSC941Web::stop_exercise_() {
+  if (this->exercise_state_ == ExerciseState::IDLE) return;
+  ESP_LOGW(TAG, "Exercise manually stopped");
+
+  if (this->controller_) {
+    // Open transfer switch if it was closed
+    if (this->exercise_cfg_.load_transfer &&
+        (this->exercise_state_ == ExerciseState::RUNNING)) {
+      this->controller_->write_coil(5, true);  // Gen switch off
+    }
+    this->controller_->write_coil(1, true);  // Stop engine
+    // Return to auto mode after brief delay (handled next loop)
+    this->controller_->write_coil(3, true);  // Auto mode
+  }
+  this->exercise_state_ = ExerciseState::IDLE;
 }
 
 // ============================================================
@@ -560,7 +932,7 @@ void SmartgenHSC941Web::start_server_() {
   config.server_port = this->port_;
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
-  config.max_uri_handlers = 5;
+  config.max_uri_handlers = 7;
   config.lru_purge_enable = true;
 
   esp_err_t err = httpd_start(&this->server_, &config);
@@ -603,6 +975,22 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &relay_uri);
+
+  httpd_uri_t exercise_get_uri = {
+      .uri = "/api/exercise",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_exercise_get_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &exercise_get_uri);
+
+  httpd_uri_t exercise_post_uri = {
+      .uri = "/api/exercise",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_exercise_post_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &exercise_post_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -799,6 +1187,118 @@ esp_err_t SmartgenHSC941Web::handle_api_relay_(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *resp = R"({"ok":true})";
   return httpd_resp_send(req, resp, strlen(resp));
+}
+
+// ============================================================
+//  Exercise API handlers
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_api_exercise_get_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  const auto &cfg = self->get_exercise_config();
+  auto state = self->get_exercise_state();
+  uint32_t remain = self->get_exercise_remaining_sec();
+  const char *state_str = "idle";
+  switch (state) {
+    case ExerciseState::STARTING: state_str = "starting"; break;
+    case ExerciseState::RUNNING:  state_str = "running"; break;
+    case ExerciseState::COOLDOWN: state_str = "cooldown"; break;
+    case ExerciseState::STOPPING: state_str = "stopping"; break;
+    default: break;
+  }
+
+  char json[384];
+  snprintf(json, sizeof(json),
+    "{\"enabled\":%s,\"day\":%u,\"hour\":%u,\"minute\":%u,\"duration\":%u,"
+    "\"load_transfer\":%s,\"state\":\"%s\",\"remaining\":%u,\"last_run\":\"%s\"}",
+    cfg.enabled ? "true" : "false",
+    cfg.day, cfg.hour, cfg.minute, cfg.duration_min,
+    cfg.load_transfer ? "true" : "false",
+    state_str, remain,
+    self->get_exercise_last_run().c_str());
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json, strlen(json));
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_exercise_post_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 512) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
+    return ESP_FAIL;
+  }
+
+  char body[513];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  // Check for "action":"stop" to abort a running exercise
+  if (strstr(body, "\"action\"") != nullptr && strstr(body, "\"stop\"") != nullptr) {
+    self->stop_exercise_();
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    const char *r = R"({"ok":true,"msg":"Exercise stopped"})";
+    return httpd_resp_send(req, r, strlen(r));
+  }
+
+  // Check for "action":"start" to manually trigger exercise now
+  if (strstr(body, "\"action\"") != nullptr && strstr(body, "\"start\"") != nullptr) {
+    if (self->get_exercise_state() != ExerciseState::IDLE) {
+      httpd_resp_set_type(req, "application/json");
+      httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+      const char *r = R"({"ok":false,"error":"Exercise already running"})";
+      return httpd_resp_send(req, r, strlen(r));
+    }
+    self->start_exercise_();
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    const char *r = R"({"ok":true,"msg":"Exercise started"})";
+    return httpd_resp_send(req, r, strlen(r));
+  }
+
+  // Otherwise parse config update
+  auto find_int = [&](const char *key) -> int {
+    const char *p = strstr(body, key);
+    if (!p) return -1;
+    p = strchr(p, ':');
+    if (!p) return -1;
+    return atoi(p + 1);
+  };
+
+  self->exercise_cfg_.enabled = (strstr(body, "\"enabled\":true") != nullptr);
+  int v;
+  if ((v = find_int("\"day\"")) >= 0 && v <= 7) self->exercise_cfg_.day = v;
+  if ((v = find_int("\"hour\"")) >= 0 && v < 24) self->exercise_cfg_.hour = v;
+  if ((v = find_int("\"minute\"")) >= 0 && v < 60) self->exercise_cfg_.minute = v;
+  if ((v = find_int("\"duration\"")) >= 0 && v > 0 && v <= 120) self->exercise_cfg_.duration_min = v;
+  self->exercise_cfg_.load_transfer = (strstr(body, "\"load_transfer\":true") != nullptr);
+
+  self->save_exercise_config_();
+
+  // Reset trigger guard so schedule re-evaluates
+  self->exercise_triggered_today_ = false;
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *r = R"({"ok":true,"msg":"Config saved"})";
+  return httpd_resp_send(req, r, strlen(r));
 }
 
 }  // namespace smartgen_hsc941_web

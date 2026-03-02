@@ -5,8 +5,11 @@
 #include "esphome/components/switch/switch.h"
 #include "../smartgen_hsc941/smartgen_hsc941.h"
 #include <esp_http_server.h>
+#include <nvs_flash.h>
+#include <nvs.h>
 #include <string>
 #include <array>
+#include <ctime>
 
 namespace esphome {
 namespace smartgen_hsc941_web {
@@ -16,6 +19,24 @@ static const uint8_t MAX_RELAYS = 8;
 struct RelayInfo {
   switch_::Switch *sw{nullptr};
   std::string name;
+};
+
+// ── Exercise schedule ────────────────────────────────────────
+enum class ExerciseState : uint8_t {
+  IDLE = 0,       // Not running
+  STARTING,       // Sent manual+start, waiting for engine to spin up
+  RUNNING,        // Engine running, counting down duration
+  COOLDOWN,       // Duration expired, sending stop, waiting cool-down
+  STOPPING,       // Sent stop, returning to auto mode
+};
+
+struct ExerciseConfig {
+  bool enabled{false};
+  uint8_t day{1};           // 0=Sun 1=Mon … 6=Sat  (7 = every day)
+  uint8_t hour{10};
+  uint8_t minute{0};
+  uint16_t duration_min{15};
+  bool load_transfer{false}; // Close transfer switch during exercise
 };
 
 class SmartgenHSC941Web : public Component {
@@ -35,7 +56,7 @@ class SmartgenHSC941Web : public Component {
   }
 
   void setup() override;
-  void loop() override {}
+  void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::AFTER_WIFI; }
 
@@ -44,6 +65,8 @@ class SmartgenHSC941Web : public Component {
   static esp_err_t handle_api_status_(httpd_req_t *req);
   static esp_err_t handle_api_command_(httpd_req_t *req);
   static esp_err_t handle_api_relay_(httpd_req_t *req);
+  static esp_err_t handle_api_exercise_get_(httpd_req_t *req);
+  static esp_err_t handle_api_exercise_post_(httpd_req_t *req);
 
   // Accessor for the controller
   smartgen_hsc941::SmartgenHSC941 *get_controller() { return this->controller_; }
@@ -51,6 +74,12 @@ class SmartgenHSC941Web : public Component {
   // Accessors for ambient temp and relays (used by handlers)
   sensor::Sensor *get_ambient_temp() { return this->ambient_temp_; }
   const std::array<RelayInfo, MAX_RELAYS> &get_relays() const { return this->relays_; }
+
+  // Exercise accessors (used by handlers)
+  const ExerciseConfig &get_exercise_config() const { return this->exercise_cfg_; }
+  ExerciseState get_exercise_state() const { return this->exercise_state_; }
+  uint32_t get_exercise_remaining_sec() const;
+  std::string get_exercise_last_run() const { return this->exercise_last_run_; }
 
  protected:
   smartgen_hsc941::SmartgenHSC941 *controller_{nullptr};
@@ -60,6 +89,23 @@ class SmartgenHSC941Web : public Component {
   std::string js_url_;
   sensor::Sensor *ambient_temp_{nullptr};
   std::array<RelayInfo, MAX_RELAYS> relays_{};
+
+  // ── Exercise schedule ──
+  ExerciseConfig exercise_cfg_{};
+  ExerciseState exercise_state_{ExerciseState::IDLE};
+  uint32_t exercise_start_time_{0};   // millis() when exercise started
+  uint32_t exercise_cooldown_start_{0};
+  uint32_t last_exercise_check_{0};   // millis() of last time check
+  std::string exercise_last_run_;      // human-readable timestamp
+  bool exercise_triggered_today_{false};
+  uint8_t exercise_last_trigger_day_{255};
+
+  void load_exercise_config_();
+  void save_exercise_config_();
+  void check_exercise_schedule_();
+  void exercise_step_();
+  void start_exercise_();
+  void stop_exercise_();
 
   void start_server_();
   void stop_server_();
