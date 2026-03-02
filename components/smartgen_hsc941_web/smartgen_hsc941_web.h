@@ -24,10 +24,11 @@ struct RelayInfo {
 // ── Exercise schedule ────────────────────────────────────────
 enum class ExerciseState : uint8_t {
   IDLE = 0,       // Not running
-  STARTING,       // Sent manual+start, waiting for engine to spin up
-  RUNNING,        // Engine running, counting down duration
-  COOLDOWN,       // Duration expired, sending stop, waiting cool-down
-  STOPPING,       // Sent stop, returning to auto mode
+  STARTING,       // Sent manual+start, waiting for engine RPM > threshold
+  RUNNING,        // Engine confirmed running, counting down duration
+  COOLDOWN,       // Duration expired, opening transfer switch
+  STOPPING,       // Sent stop, waiting for engine to spin down
+  FAILED,         // Crank failure or shutdown detected — will auto-reset to IDLE
 };
 
 struct ExerciseConfig {
@@ -80,6 +81,7 @@ class SmartgenHSC941Web : public Component {
   ExerciseState get_exercise_state() const { return this->exercise_state_; }
   uint32_t get_exercise_remaining_sec() const;
   std::string get_exercise_last_run() const { return this->exercise_last_run_; }
+  std::string get_exercise_fail_reason() const { return this->exercise_fail_reason_; }
 
  protected:
   smartgen_hsc941::SmartgenHSC941 *controller_{nullptr};
@@ -93,12 +95,14 @@ class SmartgenHSC941Web : public Component {
   // ── Exercise schedule ──
   ExerciseConfig exercise_cfg_{};
   ExerciseState exercise_state_{ExerciseState::IDLE};
-  uint32_t exercise_start_time_{0};   // millis() when exercise started
-  uint32_t exercise_cooldown_start_{0};
-  uint32_t last_exercise_check_{0};   // millis() of last time check
-  std::string exercise_last_run_;      // human-readable timestamp
+  uint32_t exercise_phase_start_{0};    // millis() when current phase started
+  uint32_t exercise_run_start_{0};      // millis() when RUNNING phase started (for duration)
+  uint32_t last_exercise_check_{0};     // millis() of last time check
+  std::string exercise_last_run_;       // human-readable timestamp
+  std::string exercise_fail_reason_;    // reason for last failure
   bool exercise_triggered_today_{false};
   uint8_t exercise_last_trigger_day_{255};
+  bool exercise_start_cmd_sent_{false}; // start coil already sent this STARTING phase
 
   void load_exercise_config_();
   void save_exercise_config_();

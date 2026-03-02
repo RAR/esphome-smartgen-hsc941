@@ -55,6 +55,22 @@ class SmartgenHSC941 : public PollingComponent {
   // Communication health
   bool is_connected() const { return this->comm_failures_ < MAX_FAILURES; }
 
+  // Engine state accessors (for exercise scheduler / companion components)
+  float get_engine_rpm() const {
+    return (this->engine_speed_sensor_ && this->engine_speed_sensor_->has_state())
+               ? this->engine_speed_sensor_->state : 0.0f;
+  }
+  bool is_engine_running() const { return this->get_engine_rpm() > 100.0f; }
+  bool is_crank_failure() const {
+    return (this->crank_failure_shutdown_bs_ && this->crank_failure_shutdown_bs_->state);
+  }
+  bool is_any_shutdown() const {
+    return (this->common_shutdown_bs_ && this->common_shutdown_bs_->state);
+  }
+  bool is_start_relay_active() const {
+    return (this->start_relay_output_bs_ && this->start_relay_output_bs_->state);
+  }
+
   // ===== SENSOR SETTERS (Function Code 03H - Holding Registers) =====
   void set_gen_voltage_a_sensor(sensor::Sensor *s) { this->gen_voltage_a_sensor_ = s; }
   void set_gen_voltage_b_sensor(sensor::Sensor *s) { this->gen_voltage_b_sensor_ = s; }

@@ -617,8 +617,16 @@ function loadExercise(){
 }
 function updateExStatus(d){
  const stEl=document.getElementById('exState');
- const running=d.state&&d.state!=='idle';
- if(running){
+ const failed=d.state==='failed';
+ const active=d.state&&d.state!=='idle'&&!failed;
+ if(failed){
+  let txt='FAILED';
+  if(d.fail_reason)txt+=': '+d.fail_reason;
+  stEl.textContent=txt;
+  stEl.style.color='var(--red)';
+  document.getElementById('exRunBtn').style.display='';
+  document.getElementById('exStopBtn').style.display='none';
+ } else if(active){
   let txt=d.state.charAt(0).toUpperCase()+d.state.slice(1);
   if(d.remaining>0)txt+=' ('+Math.floor(d.remaining/60)+'m '+String(d.remaining%60).padStart(2,'0')+'s remaining)';
   stEl.textContent=txt;
@@ -779,9 +787,19 @@ void SmartgenHSC941Web::save_exercise_config_() {
 //  Exercise scheduler logic
 // ============================================================
 
+// Timeout for engine to reach running RPM after start command (90 seconds
+// covers typical 3-attempt crank cycle on HSC941)
+static const uint32_t CRANK_TIMEOUT_MS = 90000;
+// Time to wait after opening transfer switch before sending stop (ms)
+static const uint32_t COOLDOWN_DELAY_MS = 15000;
+// Time to wait after stop command for engine to spin down (ms)
+static const uint32_t STOP_WAIT_MS = 30000;
+// Time to display FAILED state before auto-clearing to IDLE (ms)
+static const uint32_t FAIL_DISPLAY_MS = 60000;
+
 uint32_t SmartgenHSC941Web::get_exercise_remaining_sec() const {
-  if (this->exercise_state_ == ExerciseState::IDLE) return 0;
-  uint32_t elapsed_ms = millis() - this->exercise_start_time_;
+  if (this->exercise_state_ != ExerciseState::RUNNING) return 0;
+  uint32_t elapsed_ms = millis() - this->exercise_run_start_;
   uint32_t total_ms = this->exercise_cfg_.duration_min * 60U * 1000U;
   if (elapsed_ms >= total_ms) return 0;
   return (total_ms - elapsed_ms) / 1000;
@@ -808,6 +826,9 @@ void SmartgenHSC941Web::check_exercise_schedule_() {
 
   if (this->exercise_triggered_today_) return;
 
+  // Don't start if engine is already running (e.g. power outage auto-start)
+  if (this->controller_->is_engine_running()) return;
+
   // Check if schedule matches
   bool day_match = (this->exercise_cfg_.day == 7) || (this->exercise_cfg_.day == wday);
   if (day_match && hour == this->exercise_cfg_.hour && minute == this->exercise_cfg_.minute) {
@@ -825,10 +846,13 @@ void SmartgenHSC941Web::start_exercise_() {
            this->exercise_cfg_.duration_min,
            this->exercise_cfg_.load_transfer ? "yes" : "no");
 
-  // Switch to manual mode, then start engine
+  this->exercise_fail_reason_.clear();
+  this->exercise_start_cmd_sent_ = false;
+
+  // Switch to manual mode first
   this->controller_->write_coil(4, true);  // Manual mode
   this->exercise_state_ = ExerciseState::STARTING;
-  this->exercise_start_time_ = millis();
+  this->exercise_phase_start_ = millis();
 
   // Record last run timestamp
   time_t now_t = time(nullptr);
@@ -846,58 +870,140 @@ void SmartgenHSC941Web::exercise_step_() {
     return;
   }
 
-  uint32_t elapsed_ms = millis() - this->exercise_start_time_;
+  uint32_t phase_elapsed = millis() - this->exercise_phase_start_;
 
   switch (this->exercise_state_) {
-    case ExerciseState::STARTING:
-      // 3 second delay after manual mode, then send start
-      if (elapsed_ms > 3000 && elapsed_ms < 5000) {
+
+    case ExerciseState::STARTING: {
+      // After 3s delay (for manual mode to register), send start command once
+      if (!this->exercise_start_cmd_sent_ && phase_elapsed > 3000) {
         this->controller_->write_coil(0, true);  // Start engine
+        this->exercise_start_cmd_sent_ = true;
+        ESP_LOGI(TAG, "Exercise: start command sent, waiting for engine RPM...");
       }
-      // After 10s, assume engine is running (or cranking)
-      if (elapsed_ms > 10000) {
+
+      // Check for crank failure shutdown
+      if (this->exercise_start_cmd_sent_ && this->controller_->is_crank_failure()) {
+        ESP_LOGW(TAG, "Exercise: CRANK FAILURE detected, aborting");
+        this->exercise_fail_reason_ = "Crank failure";
+        this->exercise_state_ = ExerciseState::FAILED;
+        this->exercise_phase_start_ = millis();
+        // Try to return to safe state
+        this->controller_->write_coil(1, true);  // Stop
+        this->controller_->write_coil(3, true);  // Auto mode
+        break;
+      }
+
+      // Check for any shutdown condition
+      if (this->exercise_start_cmd_sent_ && this->controller_->is_any_shutdown()) {
+        ESP_LOGW(TAG, "Exercise: SHUTDOWN detected during start, aborting");
+        this->exercise_fail_reason_ = "Shutdown during start";
+        this->exercise_state_ = ExerciseState::FAILED;
+        this->exercise_phase_start_ = millis();
+        this->controller_->write_coil(3, true);  // Auto mode
+        break;
+      }
+
+      // Check if engine is actually running (RPM > threshold)
+      if (this->exercise_start_cmd_sent_ && this->controller_->is_engine_running()) {
+        ESP_LOGI(TAG, "Exercise: engine running at %.0f RPM, starting %u min timer",
+                 this->controller_->get_engine_rpm(), this->exercise_cfg_.duration_min);
         this->exercise_state_ = ExerciseState::RUNNING;
-        this->exercise_start_time_ = millis();  // Reset for duration timer
-        ESP_LOGI(TAG, "Exercise: engine start sent, now running for %u min", this->exercise_cfg_.duration_min);
+        this->exercise_run_start_ = millis();
+        this->exercise_phase_start_ = millis();
 
         // Optionally close transfer switch
         if (this->exercise_cfg_.load_transfer) {
           this->controller_->write_coil(6, true);  // Gen switch on
           ESP_LOGI(TAG, "Exercise: transfer switch closed");
         }
+        break;
+      }
+
+      // Timeout — engine never reached running RPM
+      if (phase_elapsed > CRANK_TIMEOUT_MS) {
+        ESP_LOGW(TAG, "Exercise: engine failed to start within %u seconds, aborting",
+                 CRANK_TIMEOUT_MS / 1000);
+        this->exercise_fail_reason_ = "Start timeout (no RPM)";
+        this->exercise_state_ = ExerciseState::FAILED;
+        this->exercise_phase_start_ = millis();
+        this->controller_->write_coil(1, true);  // Stop
+        this->controller_->write_coil(3, true);  // Auto mode
       }
       break;
+    }
 
     case ExerciseState::RUNNING: {
+      // Monitor for unexpected shutdown while running
+      if (this->controller_->is_any_shutdown()) {
+        ESP_LOGW(TAG, "Exercise: SHUTDOWN detected during run, aborting");
+        this->exercise_fail_reason_ = "Shutdown during run";
+        this->exercise_state_ = ExerciseState::FAILED;
+        this->exercise_phase_start_ = millis();
+        if (this->exercise_cfg_.load_transfer) {
+          this->controller_->write_coil(5, true);  // Gen switch off
+        }
+        this->controller_->write_coil(3, true);  // Auto mode
+        break;
+      }
+
+      // Monitor for engine stall (RPM dropped to zero unexpectedly)
+      if (!this->controller_->is_engine_running()) {
+        ESP_LOGW(TAG, "Exercise: engine stalled (RPM=%.0f), aborting",
+                 this->controller_->get_engine_rpm());
+        this->exercise_fail_reason_ = "Engine stalled";
+        this->exercise_state_ = ExerciseState::FAILED;
+        this->exercise_phase_start_ = millis();
+        if (this->exercise_cfg_.load_transfer) {
+          this->controller_->write_coil(5, true);  // Gen switch off
+        }
+        this->controller_->write_coil(3, true);  // Auto mode
+        break;
+      }
+
+      // Check if duration has elapsed
+      uint32_t run_elapsed = millis() - this->exercise_run_start_;
       uint32_t duration_ms = this->exercise_cfg_.duration_min * 60U * 1000U;
-      if (elapsed_ms >= duration_ms) {
-        ESP_LOGI(TAG, "Exercise: duration complete, stopping");
+      if (run_elapsed >= duration_ms) {
+        ESP_LOGI(TAG, "Exercise: duration complete, beginning cooldown");
         // Open transfer switch first if it was closed
         if (this->exercise_cfg_.load_transfer) {
           this->controller_->write_coil(5, true);  // Gen switch off
           ESP_LOGI(TAG, "Exercise: transfer switch opened");
         }
         this->exercise_state_ = ExerciseState::COOLDOWN;
-        this->exercise_cooldown_start_ = millis();
+        this->exercise_phase_start_ = millis();
       }
       break;
     }
 
     case ExerciseState::COOLDOWN:
-      // Wait 10 seconds for transfer switch to open before stopping engine
-      if (millis() - this->exercise_cooldown_start_ > 10000) {
+      // Wait for transfer switch to open before stopping engine
+      if (phase_elapsed > COOLDOWN_DELAY_MS) {
         this->controller_->write_coil(1, true);  // Stop engine
         this->exercise_state_ = ExerciseState::STOPPING;
-        ESP_LOGI(TAG, "Exercise: stop command sent");
+        this->exercise_phase_start_ = millis();
+        ESP_LOGI(TAG, "Exercise: stop command sent, waiting for engine to stop");
       }
       break;
 
     case ExerciseState::STOPPING:
-      // Wait 5 seconds then return to auto mode
-      if (millis() - this->exercise_cooldown_start_ > 15000) {
+      // Wait for engine to actually stop (RPM = 0) or timeout
+      if (!this->controller_->is_engine_running() || phase_elapsed > STOP_WAIT_MS) {
+        if (this->controller_->is_engine_running()) {
+          ESP_LOGW(TAG, "Exercise: engine still running after stop timeout, forcing auto mode");
+        }
         this->controller_->write_coil(3, true);  // Auto mode
         this->exercise_state_ = ExerciseState::IDLE;
         ESP_LOGI(TAG, "Exercise: complete, returned to auto mode");
+      }
+      break;
+
+    case ExerciseState::FAILED:
+      // Display failure for a while then auto-clear
+      if (phase_elapsed > FAIL_DISPLAY_MS) {
+        ESP_LOGI(TAG, "Exercise: clearing failure state");
+        this->exercise_state_ = ExerciseState::IDLE;
       }
       break;
 
@@ -907,17 +1013,17 @@ void SmartgenHSC941Web::exercise_step_() {
 }
 
 void SmartgenHSC941Web::stop_exercise_() {
-  if (this->exercise_state_ == ExerciseState::IDLE) return;
+  if (this->exercise_state_ == ExerciseState::IDLE ||
+      this->exercise_state_ == ExerciseState::FAILED) return;
   ESP_LOGW(TAG, "Exercise manually stopped");
 
   if (this->controller_) {
-    // Open transfer switch if it was closed
+    // Open transfer switch if it was closed during RUNNING
     if (this->exercise_cfg_.load_transfer &&
         (this->exercise_state_ == ExerciseState::RUNNING)) {
       this->controller_->write_coil(5, true);  // Gen switch off
     }
     this->controller_->write_coil(1, true);  // Stop engine
-    // Return to auto mode after brief delay (handled next loop)
     this->controller_->write_coil(3, true);  // Auto mode
   }
   this->exercise_state_ = ExerciseState::IDLE;
@@ -1209,18 +1315,21 @@ esp_err_t SmartgenHSC941Web::handle_api_exercise_get_(httpd_req_t *req) {
     case ExerciseState::RUNNING:  state_str = "running"; break;
     case ExerciseState::COOLDOWN: state_str = "cooldown"; break;
     case ExerciseState::STOPPING: state_str = "stopping"; break;
+    case ExerciseState::FAILED:   state_str = "failed"; break;
     default: break;
   }
 
-  char json[384];
+  char json[512];
   snprintf(json, sizeof(json),
     "{\"enabled\":%s,\"day\":%u,\"hour\":%u,\"minute\":%u,\"duration\":%u,"
-    "\"load_transfer\":%s,\"state\":\"%s\",\"remaining\":%u,\"last_run\":\"%s\"}",
+    "\"load_transfer\":%s,\"state\":\"%s\",\"remaining\":%u,\"last_run\":\"%s\","
+    "\"fail_reason\":\"%s\"}",
     cfg.enabled ? "true" : "false",
     cfg.day, cfg.hour, cfg.minute, cfg.duration_min,
     cfg.load_transfer ? "true" : "false",
     state_str, remain,
-    self->get_exercise_last_run().c_str());
+    self->get_exercise_last_run().c_str(),
+    self->get_exercise_fail_reason().c_str());
 
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
