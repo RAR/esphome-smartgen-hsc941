@@ -344,7 +344,7 @@ const ANN=[
  {k:'op_open_w',l:'O.P. Sensor Open',t:'w'},{k:'aux_open_w',l:'Aux Sensor Open',t:'w'},{k:'aux_w',l:'Aux Sensor Warning',t:'w'}
 ];
 const IOS=[
- {k:'on_load',l:'Gen On Load (Xfer Closed)',c:'green'},{k:'auto_mode',l:'Auto Mode',c:'blue'},{k:'manual_mode',l:'Manual Mode',c:'amber'},
+ {k:'on_load',l:'Xfer Closed',c:'green'},{k:'auto_mode',l:'Auto Mode',c:'blue'},{k:'manual_mode',l:'Manual Mode',c:'amber'},
  {k:'stop_mode',l:'Stop Mode',c:'red'},{k:'estop_in',l:'E-Stop Input',c:'red'},
  {k:'start_relay',l:'Start Relay',c:'green'},{k:'fuel_relay',l:'Fuel Relay',c:'green'},
  {k:'aux_in1',l:'Aux Input 1',c:'blue'},{k:'aux_in2',l:'Aux Input 2',c:'blue'},{k:'aux_in3',l:'Aux Input 3',c:'blue'},
