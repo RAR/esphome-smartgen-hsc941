@@ -155,6 +155,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--faint);border-radius:3px}
+
+/* ── Relay toggle switch ── */
+.relay-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:8px;background:var(--surface);border:1px solid transparent;transition:all .3s}
+.relay-item.relay-on{background:#22c55e0d;border-color:#22c55e25}
+.relay-item .relay-lbl{flex:1;font-size:.74rem;font-weight:500;color:var(--dim)}
+.relay-item.relay-on .relay-lbl{color:var(--text)}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:var(--faint);border-radius:11px;transition:all .2s}
+.toggle .slider::before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:all .2s}
+.toggle input:checked+.slider{background:var(--green)}
+.toggle input:checked+.slider::before{transform:translateX(18px)}
+.relay-state{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;flex-shrink:0;min-width:28px;text-align:center}
+.relay-item .relay-state{background:#ffffff08;color:var(--faint)}
+.relay-item.relay-on .relay-state{background:#22c55e28;color:var(--green)}
 </style>
 </head>
 <body>
@@ -217,6 +232,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <tr><td class="dlbl">Aux Sensor 1</td><td class="dval"><span id="v_aux">--</span></td></tr>
     <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
     <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
+    <tr id="ambRow" style="display:none"><td class="dlbl">Ambient Temp</td><td class="dval"><span id="v_amb">--</span><span class="dunit">&#176;C</span></td></tr>
    </table>
   </div>
  </div>
@@ -251,6 +267,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="card">
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8m-8 4h8m-8 4h5"/></svg><h2>Inputs / Outputs</h2></div>
   <div class="card-body"><div class="io-grid" id="ioPanel"></div></div>
+ </div>
+</div>
+
+<!-- Controls -->
+<div class="row r-full" id="relaySection" style="display:none">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M7 8v8m5-8v8m5-8v8"/></svg><h2>Board Relays</h2></div>
+  <div class="card-body"><div class="io-grid" id="relayPanel"></div></div>
  </div>
 </div>
 
@@ -423,6 +447,16 @@ function update(d){
   const st=row?row.querySelector('.io-state'):null;
   if(st)st.textContent=on?'ON':'OFF';
  });
+ // Ambient temperature
+ if(d.ambient_temp!=null){
+  const ar=document.getElementById('ambRow');if(ar)ar.style.display='';
+  const ae=document.getElementById('v_amb');if(ae)ae.textContent=f(d.ambient_temp,1);
+ }
+ // Relays
+ if(d.relays){
+  if(!RELAYS.length)initRelays(d.relays);
+  updateRelays(d.relays);
+ }
 }
 
 /* ── Polling ── */
@@ -459,6 +493,39 @@ function toast(msg,cls){
  setTimeout(()=>t.classList.remove('show'),2500);
 }
 
+/* ── Relay toggle ── */
+let RELAYS=[];
+function initRelays(rels){
+ if(!rels||!rels.length)return;
+ RELAYS=rels;
+ const sec=document.getElementById('relaySection');
+ if(sec)sec.style.display='';
+ let h='';
+ rels.forEach((r,i)=>{
+  h+=`<div class="relay-item" id="rly_${i}"><span class="relay-lbl">${r.name}</span><label class="toggle"><input type="checkbox" id="rly_cb_${i}" onchange="toggleRelay(${i},this.checked)"><span class="slider"></span></label><span class="relay-state" id="rly_st_${i}">OFF</span></div>`;
+ });
+ document.getElementById('relayPanel').innerHTML=h;
+}
+function updateRelays(rels){
+ if(!rels||!rels.length)return;
+ rels.forEach((r,i)=>{
+  const on=!!r.state;
+  const row=document.getElementById('rly_'+i);
+  const cb=document.getElementById('rly_cb_'+i);
+  const st=document.getElementById('rly_st_'+i);
+  if(row)row.className='relay-item'+(on?' relay-on':'');
+  if(cb&&cb.checked!==on)cb.checked=on;
+  if(st)st.textContent=on?'ON':'OFF';
+ });
+}
+function toggleRelay(idx,on){
+ fetch('/api/relay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:idx,state:on})})
+ .then(r=>r.json()).then(d=>{
+  if(!d.ok)toast('Relay command failed','err');
+  setTimeout(poll,300);
+ }).catch(()=>toast('Communication error','err'));
+}
+
 /* ── Init ── */
 initGauges();initPanels();poll();setInterval(poll,2500);
 </script>
@@ -493,7 +560,7 @@ void SmartgenHSC941Web::start_server_() {
   config.server_port = this->port_;
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
-  config.max_uri_handlers = 4;
+  config.max_uri_handlers = 5;
   config.lru_purge_enable = true;
 
   esp_err_t err = httpd_start(&this->server_, &config);
@@ -528,6 +595,14 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &command_uri);
+
+  httpd_uri_t relay_uri = {
+      .uri = "/api/relay",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_relay_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &relay_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -559,6 +634,51 @@ esp_err_t SmartgenHSC941Web::handle_api_status_(httpd_req_t *req) {
   std::string json;
   json.reserve(6144);
   self->controller_->build_status_json(json);
+
+  // Append ambient temperature if configured (strip closing '}' and re-close)
+  if (self->ambient_temp_ != nullptr) {
+    if (!json.empty() && json.back() == '}') json.pop_back();
+    json += ",\"ambient_temp\":";
+    if (self->ambient_temp_->has_state()) {
+      char buf[16];
+      snprintf(buf, sizeof(buf), "%.1f", self->ambient_temp_->state);
+      json += buf;
+    } else {
+      json += "null";
+    }
+    json += '}';
+  }
+
+  // Append relay states if any configured
+  {
+    bool has_any = false;
+    for (uint8_t i = 0; i < MAX_RELAYS; i++) {
+      if (self->relays_[i].sw != nullptr) { has_any = true; break; }
+    }
+    if (has_any) {
+      if (!json.empty() && json.back() == '}') json.pop_back();
+      json += ",\"relays\":[";
+      bool first = true;
+      for (uint8_t i = 0; i < MAX_RELAYS; i++) {
+        if (self->relays_[i].sw == nullptr) continue;
+        if (!first) json += ',';
+        first = false;
+        json += "{\"idx\":";
+        json += std::to_string(i);
+        json += ",\"name\":\"";
+        // Escape relay name for JSON safety
+        for (char c : self->relays_[i].name) {
+          if (c == '"') json += "\\\"";
+          else if (c == '\\') json += "\\\\";
+          else json += c;
+        }
+        json += "\",\"state\":";
+        json += self->relays_[i].sw->state ? "true" : "false";
+        json += '}';
+      }
+      json += "]}";
+    }
+  }
 
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
@@ -615,6 +735,69 @@ esp_err_t SmartgenHSC941Web::handle_api_command_(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *resp = ok ? R"({"ok":true})" : R"({"ok":false,"error":"write failed"})";
+  return httpd_resp_send(req, resp, strlen(resp));
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_relay_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  // Read POST body
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 256) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
+    return ESP_FAIL;
+  }
+
+  char body[257];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  // Parse {"relay":N,"state":true/false}
+  const char *relay_key = strstr(body, "\"relay\"");
+  if (!relay_key) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Missing 'relay' field");
+    return ESP_FAIL;
+  }
+  const char *rcolon = strchr(relay_key, ':');
+  if (!rcolon) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid JSON");
+    return ESP_FAIL;
+  }
+  int idx = atoi(rcolon + 1);
+  if (idx < 0 || idx >= MAX_RELAYS || self->relays_[idx].sw == nullptr) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid relay index");
+    return ESP_FAIL;
+  }
+
+  const char *state_key = strstr(body, "\"state\"");
+  bool turn_on = false;
+  if (state_key) {
+    const char *scolon = strchr(state_key, ':');
+    if (scolon) {
+      // Skip whitespace
+      const char *p = scolon + 1;
+      while (*p == ' ') p++;
+      turn_on = (*p == 't' || *p == 'T' || *p == '1');
+    }
+  }
+
+  if (turn_on) {
+    self->relays_[idx].sw->turn_on();
+  } else {
+    self->relays_[idx].sw->turn_off();
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *resp = R"({"ok":true})";
   return httpd_resp_send(req, resp, strlen(resp));
 }
 
