@@ -26,9 +26,9 @@ const char SmartgenHSC941Web::DASHBOARD_HTML[] = R"rawliteral(<!DOCTYPE html>
  --red-bg:#ef444418;--orange-bg:#f59e0b18;--green-bg:#22c55e18;--blue-bg:#3b82f618;
  --gauge-track:#1e2235;--radius:10px;
 }
-html{font-size:14px}
+html{font-size:16px}
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-@media(max-width:768px){html{font-size:13px}}
+@media(max-width:768px){html{font-size:15px}}
 
 /* ── Header ── */
 .hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
