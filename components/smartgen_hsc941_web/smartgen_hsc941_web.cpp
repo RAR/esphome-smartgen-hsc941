@@ -166,6 +166,20 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .runtime-val{font-size:1.3rem;font-weight:700;font-variant-numeric:tabular-nums}
 .runtime-lbl{font-size:.6rem;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px;font-weight:600}
 
+/* ── Event log ── */
+.evtlog-wrap{max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:6px}
+.evtlog-tbl{width:100%;border-collapse:collapse;font-size:.72rem}
+.evtlog-tbl th{position:sticky;top:0;background:var(--surface);text-align:left;padding:6px 10px;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);border-bottom:1px solid var(--border);font-weight:600}
+.evtlog-tbl td{padding:5px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.evtlog-tbl tr:last-child td{border-bottom:none}
+.evtlog-tbl .evt-ts{white-space:nowrap;color:var(--dim);width:145px;font-variant-numeric:tabular-nums}
+.evtlog-tbl .evt-msg{color:var(--text)}
+.evtlog-empty{text-align:center;padding:30px;color:var(--dim);font-size:.8rem}
+.evtlog-bar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.evtlog-count{font-size:.7rem;color:var(--dim)}
+.evtlog-clear{font-size:.65rem;padding:4px 12px;background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:4px;cursor:pointer;transition:all .2s}
+.evtlog-clear:hover{border-color:var(--accent);color:var(--accent)}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--faint);border-radius:3px}
 
@@ -418,6 +432,22 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="runtime-item"><div class="runtime-val" id="rt_kwh">--</div><div class="runtime-lbl">Total kWh</div></div>
     <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
     <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
+   </div>
+  </div>
+ </div>
+</div>
+</div>
+<!-- Event Log -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><h2>Event Log</h2></div>
+  <div class="card-body">
+   <div class="evtlog-bar">
+    <span class="evtlog-count" id="evtCount"></span>
+    <button class="evtlog-clear" onclick="clearEventLog()">Clear Log</button>
+   </div>
+   <div id="evtlogWrap" class="evtlog-wrap">
+    <div class="evtlog-empty" id="evtEmpty">No events recorded</div>
    </div>
   </div>
  </div>
@@ -831,10 +861,38 @@ function saveThermostat(){
  .catch(()=>toast('Communication error','err'));
 }
 
+/* ── Event Log ── */
+function loadEventLog(){
+ fetch('/api/eventlog').then(r=>r.json()).then(d=>{
+  const wrap=document.getElementById('evtlogWrap');
+  const empty=document.getElementById('evtEmpty');
+  const cnt=document.getElementById('evtCount');
+  if(!d.events||d.events.length===0){
+   wrap.innerHTML='<div class="evtlog-empty">No events recorded</div>';
+   cnt.textContent='';
+   return;
+  }
+  cnt.textContent=d.events.length+' event'+(d.events.length!==1?'s':'');
+  let html='<table class="evtlog-tbl"><thead><tr><th>Time</th><th>Event</th></tr></thead><tbody>';
+  d.events.forEach(e=>{
+   html+='<tr><td class="evt-ts">'+e.time+'</td><td class="evt-msg">'+e.msg.replace(/</g,'&lt;')+'</td></tr>';
+  });
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+ }).catch(()=>{});
+}
+function clearEventLog(){
+ if(!confirm('Clear all event log entries?'))return;
+ fetch('/api/eventlog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'clear'})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Event log cleared':'Clear failed',d.ok?'ok':'err');loadEventLog();})
+ .catch(()=>toast('Communication error','err'));
+}
+
 /* ── Init ── */
 initGauges();initPanels();poll();setInterval(poll,2500);
 loadExercise();setInterval(pollExercise,3000);
 loadThermostat();setInterval(pollThermostat,5000);
+loadEventLog();setInterval(loadEventLog,10000);
 </script>
 </body>
 </html>)rawliteral";
@@ -845,9 +903,12 @@ loadThermostat();setInterval(pollThermostat,5000);
 
 void SmartgenHSC941Web::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SmartGen HSC941 Web UI...");
+  this->init_spiffs_();
+  this->load_event_log_();
   this->load_exercise_config_();
   this->load_thermostat_config_();
   this->start_server_();
+  this->log_event("System booted");
 }
 
 void SmartgenHSC941Web::loop() {
@@ -865,6 +926,11 @@ void SmartgenHSC941Web::loop() {
   if (now - this->last_thermostat_check_ >= 5000) {
     this->last_thermostat_check_ = now;
     this->thermostat_step_();
+  }
+  // Check alarm transitions every 2 seconds
+  if (now - this->last_alarm_check_ >= 2000) {
+    this->last_alarm_check_ = now;
+    this->check_alarm_transitions_();
   }
 }
 
@@ -1062,10 +1128,183 @@ void SmartgenHSC941Web::thermostat_step_() {
     if (!currently_on && val < t.on_below) {
       this->relays_[i].sw->turn_on();
       ESP_LOGI(TAG, "Thermostat: Relay %u ON (%.1f < %.1f)", i + 1, val, t.on_below);
+      char msg[64];
+      snprintf(msg, sizeof(msg), "Thermostat: %s ON (%.1f\u00b0 < %.1f\u00b0)",
+               this->relays_[i].name.c_str(), val, t.on_below);
+      this->log_event(msg);
     } else if (currently_on && val > t.off_above) {
       this->relays_[i].sw->turn_off();
       ESP_LOGI(TAG, "Thermostat: Relay %u OFF (%.1f > %.1f)", i + 1, val, t.off_above);
+      char msg[64];
+      snprintf(msg, sizeof(msg), "Thermostat: %s OFF (%.1f\u00b0 > %.1f\u00b0)",
+               this->relays_[i].name.c_str(), val, t.off_above);
+      this->log_event(msg);
     }
+  }
+}
+
+// ============================================================
+//  Event Log — SPIFFS-backed persistent log
+// ============================================================
+static const char *SPIFFS_PARTITION = "eventlog";
+static const char *SPIFFS_BASE_PATH = "/eventlog";
+static const char *LOG_FILE_PATH = "/eventlog/events.log";
+// Max file size ~192KB (leave headroom in 256KB partition)
+static const size_t MAX_LOG_FILE_SIZE = 192 * 1024;
+
+void SmartgenHSC941Web::init_spiffs_() {
+  esp_vfs_spiffs_conf_t conf = {
+    .base_path = SPIFFS_BASE_PATH,
+    .partition_label = SPIFFS_PARTITION,
+    .max_files = 2,
+    .format_if_mount_failed = true,
+  };
+  esp_err_t err = esp_vfs_spiffs_register(&conf);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to mount SPIFFS '%s': %s", SPIFFS_PARTITION, esp_err_to_name(err));
+    return;
+  }
+  this->spiffs_mounted_ = true;
+
+  size_t total = 0, used = 0;
+  esp_spiffs_info(SPIFFS_PARTITION, &total, &used);
+  ESP_LOGI(TAG, "SPIFFS '%s' mounted: %u/%u bytes used", SPIFFS_PARTITION, used, total);
+}
+
+void SmartgenHSC941Web::load_event_log_() {
+  if (!this->spiffs_mounted_) return;
+
+  FILE *f = fopen(LOG_FILE_PATH, "r");
+  if (!f) {
+    ESP_LOGD(TAG, "No event log file (first boot)");
+    return;
+  }
+
+  char line[256];
+  uint16_t count = 0;
+  while (fgets(line, sizeof(line), f) != nullptr) {
+    // Format: <timestamp>\t<message>\n
+    char *tab = strchr(line, '\t');
+    if (!tab) continue;
+    *tab = '\0';
+    char *msg = tab + 1;
+    // Strip trailing newline
+    char *nl = strchr(msg, '\n');
+    if (nl) *nl = '\0';
+
+    EventEntry entry;
+    entry.timestamp = (time_t)strtoll(line, nullptr, 10);
+    entry.message = msg;
+    this->event_log_.push_back(std::move(entry));
+    count++;
+  }
+  fclose(f);
+
+  // If log exceeds capacity, trim oldest
+  if (this->event_log_.size() > MAX_LOG_ENTRIES) {
+    size_t excess = this->event_log_.size() - MAX_LOG_ENTRIES;
+    this->event_log_.erase(this->event_log_.begin(), this->event_log_.begin() + excess);
+  }
+
+  ESP_LOGI(TAG, "Loaded %u events from log file", count);
+}
+
+void SmartgenHSC941Web::append_event_to_file_(const std::string &message, time_t ts) {
+  if (!this->spiffs_mounted_) return;
+
+  // Check file size — if too large, truncate to last half
+  struct stat st;
+  if (stat(LOG_FILE_PATH, &st) == 0 && (size_t)st.st_size > MAX_LOG_FILE_SIZE) {
+    ESP_LOGW(TAG, "Event log file %.1fKB > %.1fKB limit, truncating",
+             st.st_size / 1024.0f, MAX_LOG_FILE_SIZE / 1024.0f);
+    // Read last half of file
+    FILE *f = fopen(LOG_FILE_PATH, "r");
+    if (f) {
+      fseek(f, st.st_size / 2, SEEK_SET);
+      // Skip to next newline to avoid partial line
+      char ch;
+      while (fread(&ch, 1, 1, f) == 1 && ch != '\n') {}
+      // Read remainder
+      std::string remainder;
+      char buf[512];
+      size_t n;
+      while ((n = fread(buf, 1, sizeof(buf), f)) > 0) {
+        remainder.append(buf, n);
+      }
+      fclose(f);
+      // Rewrite file with remainder
+      f = fopen(LOG_FILE_PATH, "w");
+      if (f) {
+        fwrite(remainder.data(), 1, remainder.size(), f);
+        fclose(f);
+      }
+    }
+  }
+
+  FILE *f = fopen(LOG_FILE_PATH, "a");
+  if (!f) {
+    ESP_LOGE(TAG, "Failed to open event log for append");
+    return;
+  }
+  fprintf(f, "%lld\t%s\n", (long long)ts, message.c_str());
+  fclose(f);
+}
+
+void SmartgenHSC941Web::clear_event_log_file_() {
+  this->event_log_.clear();
+  if (this->spiffs_mounted_) {
+    unlink(LOG_FILE_PATH);
+    ESP_LOGI(TAG, "Event log cleared");
+  }
+}
+
+void SmartgenHSC941Web::log_event(const std::string &message) {
+  time_t now_t = time(nullptr);
+  EventEntry entry;
+  entry.timestamp = now_t;
+  entry.message = message;
+  this->event_log_.push_back(std::move(entry));
+
+  // Trim if over capacity
+  if (this->event_log_.size() > MAX_LOG_ENTRIES) {
+    this->event_log_.erase(this->event_log_.begin());
+  }
+
+  this->append_event_to_file_(message, now_t);
+  ESP_LOGI(TAG, "Event: %s", message.c_str());
+}
+
+void SmartgenHSC941Web::check_alarm_transitions_() {
+  if (!this->controller_) return;
+
+  bool connected = this->controller_->is_connected();
+  bool shutdown = this->controller_->is_any_shutdown();
+  bool engine_running = this->controller_->is_engine_running();
+
+  // Connection state change
+  if (connected != this->prev_connected_) {
+    this->log_event(connected ? "Controller communication restored" : "Controller communication lost");
+    this->prev_connected_ = connected;
+  }
+
+  if (!connected) return;  // Don't log sensor transitions when disconnected
+
+  // Shutdown state change
+  if (shutdown != this->prev_shutdown_) {
+    this->log_event(shutdown ? "SHUTDOWN condition active" : "Shutdown condition cleared");
+    this->prev_shutdown_ = shutdown;
+  }
+
+  // Engine running state change
+  if (engine_running != this->prev_engine_running_) {
+    if (engine_running) {
+      char msg[48];
+      snprintf(msg, sizeof(msg), "Engine started (%.0f RPM)", this->controller_->get_engine_rpm());
+      this->log_event(msg);
+    } else {
+      this->log_event("Engine stopped");
+    }
+    this->prev_engine_running_ = engine_running;
   }
 }
 
@@ -1132,6 +1371,12 @@ void SmartgenHSC941Web::start_exercise_() {
            this->exercise_cfg_.duration_min,
            this->exercise_cfg_.load_transfer ? "yes" : "no");
 
+  char ex_msg[64];
+  snprintf(ex_msg, sizeof(ex_msg), "Exercise started (%u min, xfer=%s)",
+           this->exercise_cfg_.duration_min,
+           this->exercise_cfg_.load_transfer ? "on" : "off");
+  this->log_event(ex_msg);
+
   this->exercise_fail_reason_.clear();
   this->exercise_start_cmd_sent_ = false;
 
@@ -1171,6 +1416,7 @@ void SmartgenHSC941Web::exercise_step_() {
       // Check for crank failure shutdown
       if (this->exercise_start_cmd_sent_ && this->controller_->is_crank_failure()) {
         ESP_LOGW(TAG, "Exercise: CRANK FAILURE detected, aborting");
+        this->log_event("Exercise FAILED: crank failure");
         this->exercise_fail_reason_ = "Crank failure";
         this->exercise_state_ = ExerciseState::FAILED;
         this->exercise_phase_start_ = millis();
@@ -1183,6 +1429,7 @@ void SmartgenHSC941Web::exercise_step_() {
       // Check for any shutdown condition
       if (this->exercise_start_cmd_sent_ && this->controller_->is_any_shutdown()) {
         ESP_LOGW(TAG, "Exercise: SHUTDOWN detected during start, aborting");
+        this->log_event("Exercise FAILED: shutdown during start");
         this->exercise_fail_reason_ = "Shutdown during start";
         this->exercise_state_ = ExerciseState::FAILED;
         this->exercise_phase_start_ = millis();
@@ -1194,6 +1441,7 @@ void SmartgenHSC941Web::exercise_step_() {
       if (this->exercise_start_cmd_sent_ && this->controller_->is_engine_running()) {
         ESP_LOGI(TAG, "Exercise: engine running at %.0f RPM, starting %u min timer",
                  this->controller_->get_engine_rpm(), this->exercise_cfg_.duration_min);
+        this->log_event("Exercise: engine running");
         this->exercise_state_ = ExerciseState::RUNNING;
         this->exercise_run_start_ = millis();
         this->exercise_phase_start_ = millis();
@@ -1210,6 +1458,7 @@ void SmartgenHSC941Web::exercise_step_() {
       if (phase_elapsed > CRANK_TIMEOUT_MS) {
         ESP_LOGW(TAG, "Exercise: engine failed to start within %u seconds, aborting",
                  CRANK_TIMEOUT_MS / 1000);
+        this->log_event("Exercise FAILED: start timeout (no RPM)");
         this->exercise_fail_reason_ = "Start timeout (no RPM)";
         this->exercise_state_ = ExerciseState::FAILED;
         this->exercise_phase_start_ = millis();
@@ -1223,6 +1472,7 @@ void SmartgenHSC941Web::exercise_step_() {
       // Monitor for unexpected shutdown while running
       if (this->controller_->is_any_shutdown()) {
         ESP_LOGW(TAG, "Exercise: SHUTDOWN detected during run, aborting");
+        this->log_event("Exercise FAILED: shutdown during run");
         this->exercise_fail_reason_ = "Shutdown during run";
         this->exercise_state_ = ExerciseState::FAILED;
         this->exercise_phase_start_ = millis();
@@ -1237,6 +1487,7 @@ void SmartgenHSC941Web::exercise_step_() {
       if (!this->controller_->is_engine_running()) {
         ESP_LOGW(TAG, "Exercise: engine stalled (RPM=%.0f), aborting",
                  this->controller_->get_engine_rpm());
+        this->log_event("Exercise FAILED: engine stalled");
         this->exercise_fail_reason_ = "Engine stalled";
         this->exercise_state_ = ExerciseState::FAILED;
         this->exercise_phase_start_ = millis();
@@ -1281,6 +1532,7 @@ void SmartgenHSC941Web::exercise_step_() {
         }
         this->controller_->write_coil(3, true);  // Auto mode
         this->exercise_state_ = ExerciseState::IDLE;
+        this->log_event("Exercise complete");
         ESP_LOGI(TAG, "Exercise: complete, returned to auto mode");
       }
       break;
@@ -1302,6 +1554,7 @@ void SmartgenHSC941Web::stop_exercise_() {
   if (this->exercise_state_ == ExerciseState::IDLE ||
       this->exercise_state_ == ExerciseState::FAILED) return;
   ESP_LOGW(TAG, "Exercise manually stopped");
+  this->log_event("Exercise manually stopped");
 
   if (this->controller_) {
     // Open transfer switch if it was closed during RUNNING
@@ -1324,7 +1577,7 @@ void SmartgenHSC941Web::start_server_() {
   config.server_port = this->port_;
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
-  config.max_uri_handlers = 9;
+  config.max_uri_handlers = 11;
   config.max_open_sockets = 4;
   config.lru_purge_enable = true;
 
@@ -1400,6 +1653,22 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &thermostat_post_uri);
+
+  httpd_uri_t eventlog_get_uri = {
+      .uri = "/api/eventlog",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_eventlog_get_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &eventlog_get_uri);
+
+  httpd_uri_t eventlog_post_uri = {
+      .uri = "/api/eventlog",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_eventlog_post_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &eventlog_post_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -1528,6 +1797,23 @@ esp_err_t SmartgenHSC941Web::handle_api_command_(httpd_req_t *req) {
   }
 
   bool ok = self->controller_->write_coil(static_cast<uint16_t>(coil), true);
+
+  // Log the command event
+  if (ok) {
+    const char *cmd_name = "Unknown";
+    switch (coil) {
+      case 0: cmd_name = "Start"; break;
+      case 1: cmd_name = "Stop"; break;
+      case 3: cmd_name = "Auto mode"; break;
+      case 4: cmd_name = "Manual mode"; break;
+      case 5: cmd_name = "Transfer open"; break;
+      case 6: cmd_name = "Transfer close"; break;
+      case 7: cmd_name = "Fault reset"; break;
+    }
+    char evt[48];
+    snprintf(evt, sizeof(evt), "Command: %s", cmd_name);
+    self->log_event(evt);
+  }
 
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
@@ -1860,6 +2146,97 @@ esp_err_t SmartgenHSC941Web::handle_api_thermostat_post_(httpd_req_t *req) {
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *r = R"({"ok":true,"msg":"Thermostat config saved"})";
+  return httpd_resp_send(req, r, strlen(r));
+}
+
+// ============================================================
+//  Event log API handlers
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_api_eventlog_get_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  const auto &log = self->get_event_log();
+
+  // Build JSON: {"events":[{"ts":123456,"time":"2026-03-02 18:30","msg":"..."},...]
+  // Newest first. Use chunked encoding to avoid huge single buffer.
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+
+  httpd_resp_sendstr_chunk(req, "{\"events\":[");
+
+  char buf[256];
+  bool first = true;
+  // Iterate in reverse (newest first)
+  for (int i = static_cast<int>(log.size()) - 1; i >= 0; i--) {
+    const auto &e = log[i];
+    struct tm *tm_info = localtime(&e.timestamp);
+    char time_str[20] = "?";
+    if (tm_info) {
+      strftime(time_str, sizeof(time_str), "%Y-%m-%d %H:%M:%S", tm_info);
+    }
+
+    // Escape any quotes in message
+    std::string escaped_msg;
+    escaped_msg.reserve(e.message.size());
+    for (char c : e.message) {
+      if (c == '"') escaped_msg += "\\\"";
+      else if (c == '\\') escaped_msg += "\\\\";
+      else escaped_msg += c;
+    }
+
+    int len = snprintf(buf, sizeof(buf),
+      "%s{\"ts\":%ld,\"time\":\"%s\",\"msg\":\"%s\"}",
+      first ? "" : ",",
+      (long)e.timestamp, time_str, escaped_msg.c_str());
+    first = false;
+
+    if (len > 0 && len < (int)sizeof(buf)) {
+      httpd_resp_sendstr_chunk(req, buf);
+    }
+  }
+
+  httpd_resp_sendstr_chunk(req, "]}");
+  httpd_resp_sendstr_chunk(req, nullptr);  // End chunked
+  return ESP_OK;
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_eventlog_post_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 256) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
+    return ESP_FAIL;
+  }
+
+  char body[257];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  // Parse action: {"action":"clear"}
+  if (strstr(body, "\"clear\"")) {
+    self->event_log_.clear();
+    self->clear_event_log_file_();
+    self->log_event("Event log cleared");
+    ESP_LOGI(TAG, "Event log cleared by user");
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *r = R"({"ok":true})";
   return httpd_resp_send(req, r, strlen(r));
 }
 
