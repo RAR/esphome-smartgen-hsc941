@@ -58,6 +58,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .badge-mode{background:var(--blue-bg);color:var(--blue);border:1px solid #3b82f630}
 .badge-auto{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
 .badge-manual{background:#f59e0b18;color:var(--orange);border:1px solid #f59e0b30}
+.unit-toggle{background:var(--card);border:1px solid var(--border);color:var(--dim);padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:color .2s,border-color .2s;user-select:none}
+.unit-toggle:hover{color:var(--text);border-color:var(--blue)}
 .badge-stop{background:var(--red-bg);color:var(--red);border:1px solid #ef444430}
 @keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.6}}
 
@@ -265,6 +267,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
  </div>
  <div class="hdr-right">
+  <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">&deg;C</button>
   <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
   <span class="badge badge-mode" id="modeBadge">---</span>
@@ -313,7 +316,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7.07-3.07l4.24-4.24m5.66-5.66l4.24-4.24M1 12h6m6 0h6m-3.07 7.07l-4.24-4.24m-5.66-5.66L4.93 4.93"/></svg><h2>Engine</h2></div>
   <div class="card-body">
    <table class="dtable">
-    <tr><td class="dlbl">Water Temperature</td><td class="dval"><span id="v_wt">--</span><span class="dunit">&#176;C</span></td></tr>
+    <tr><td class="dlbl">Water Temperature</td><td class="dval"><span id="v_wt">--</span><span class="dunit tunit">&#176;C</span></td></tr>
     <tr><td class="dlbl">Oil Pressure</td><td class="dval"><span id="v_op">--</span><span class="dunit">kPa</span></td></tr>
     <tr><td class="dlbl">Battery Voltage</td><td class="dval"><span id="v_bv">--</span><span class="dunit">V</span></td></tr>
     <tr><td class="dlbl">Charge Voltage</td><td class="dval"><span id="v_cv">--</span><span class="dunit">V</span></td></tr>
@@ -321,8 +324,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <tr><td class="dlbl">Aux Sensor 1</td><td class="dval"><span id="v_aux">--</span></td></tr>
     <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
     <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
-    <tr id="ambRow" style="display:none"><td class="dlbl">Ambient Temp</td><td class="dval"><span id="v_amb">--</span><span class="dunit">&#176;C</span></td></tr>
-    <tr id="humRow" style="display:none"><td class="dlbl">Humidity</td><td class="dval"><span id="v_hum">--</span><span class="dunit">%</span></td></tr>
+    <tr id="ambRow" style="display:none"><td class="dlbl" id="lblAmb">Ambient Temp</td><td class="dval"><span id="v_amb">--</span><span class="dunit tunit">&#176;C</span></td></tr>
+    <tr id="humRow" style="display:none"><td class="dlbl" id="lblHum">Humidity</td><td class="dval"><span id="v_hum">--</span><span class="dunit">%</span></td></tr>
    </table>
   </div>
  </div>
@@ -495,6 +498,16 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 <div class="toast" id="toast"></div>
 
 <script>
+/* ── Temperature unit toggle ── */
+let useFahr=localStorage.getItem('tempUnit')==='F';
+function cToF(c){return c*9/5+32;}
+function tempVal(c,d){if(c==null)return'--';const v=useFahr?cToF(c):c;return v.toFixed(d!=null?d:1);}
+function tempUnit(){return useFahr?'\u00b0F':'\u00b0C';}
+function toggleUnit(){useFahr=!useFahr;localStorage.setItem('tempUnit',useFahr?'F':'C');document.getElementById('unitToggle').textContent=useFahr?'\u00b0F':'\u00b0C';updateTempUnits();if(lastData)update(lastData);if(thData&&thData.length)renderThermostat();}
+function updateTempUnits(){document.querySelectorAll('.tunit').forEach(e=>{e.innerHTML=useFahr?'&deg;F':'&deg;C';});}
+let lastData=null;
+{const b=document.getElementById('unitToggle');if(b)b.textContent=useFahr?'\u00b0F':'\u00b0C';}
+
 /* ── SVG Gauge factory ── */
 function mkGauge(containerId,label,unit,min,max,color,decimals){
  const R=58,C=2*Math.PI*R,arc=0.75,len=C*arc;
@@ -574,6 +587,7 @@ function f(v,d){if(v===null||v===undefined)return'--';return typeof v==='number'
 /* ── State update ── */
 function update(d){
  if(!d)return;
+ lastData=d;
  // Connection
  const cb=document.getElementById('connBadge');
  if(d.connected){cb.textContent='ONLINE';cb.className='badge badge-conn';}
@@ -609,8 +623,10 @@ function update(d){
  const t=[['v_ab','gen_vab'],['v_bc','gen_vbc'],['v_ca','gen_vca'],['v_tkw','total_kw'],['v_kvar','kvar'],['v_kva','kva'],['v_pf','pf']];
  t.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
  // Engine
- const eng=[['v_wt','water_temp'],['v_op','oil_press'],['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1'],['v_es','eng_status'],['v_as','auto_status']];
+ const eng=[['v_op','oil_press'],['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1'],['v_es','eng_status'],['v_as','auto_status']];
  eng.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
+ // Water temp with unit conversion
+ {const e=document.getElementById('v_wt');if(e)e.textContent=tempVal(s.water_temp,1);}
  // Runtime
  let hours=s.total_hours!=null?Math.floor(s.total_hours):0;
  let mins=s.total_min!=null?Math.floor(s.total_min):0;
@@ -668,12 +684,14 @@ function update(d){
  // Ambient temperature
  if(d.ambient_temp!=null){
   const ar=document.getElementById('ambRow');if(ar)ar.style.display='';
-  const ae=document.getElementById('v_amb');if(ae)ae.textContent=f(d.ambient_temp,1);
+  const ae=document.getElementById('v_amb');if(ae)ae.textContent=tempVal(d.ambient_temp,1);
+  if(d.ambient_temp_name){const al=document.getElementById('lblAmb');if(al)al.textContent=d.ambient_temp_name;}
  }
  // Ambient humidity
  if(d.ambient_humidity!=null){
   const hr=document.getElementById('humRow');if(hr)hr.style.display='';
   const he=document.getElementById('v_hum');if(he)he.textContent=f(d.ambient_humidity,1);
+  if(d.ambient_humidity_name){const hl=document.getElementById('lblHum');if(hl)hl.textContent=d.ambient_humidity_name;}
  }
  // Relays
  if(d.relays){
@@ -849,7 +867,7 @@ function renderThermostat(){
  thData.forEach(r=>{
   const active=r.enabled?'th-active':'';
   const rdCls=r.relay_on?'th-on':'th-off';
-  const rdTxt=r.reading!=null?r.reading.toFixed(1)+'°':'--';
+  const rdTxt=r.reading!=null?tempVal(r.reading,1)+tempUnit():'--';
   const relSt=r.relay_on?'ON':'OFF';
   h+='<div class="th-relay '+active+'" data-idx="'+r.idx+'">';
   h+='<div class="th-hdr"><span class="th-name"><label class="toggle"><input type="checkbox" class="th-en" data-idx="'+r.idx+'"'+(r.enabled?' checked':'')+' onchange="thToggle(this)"><span class="slider"></span></label><span>'+r.name+'</span></span>';
@@ -861,8 +879,10 @@ function renderThermostat(){
    h+='<option value="'+s.key+'"'+(r.sensor===s.key?' selected':'')+'>'+s.label+'</option>';
   });
   h+='</select></div>';
-  h+='<div class="th-field"><label>ON Below (°)</label><input type="number" class="th-on" data-idx="'+r.idx+'" step="0.5" value="'+r.on_below.toFixed(1)+'"></div>';
-  h+='<div class="th-field"><label>OFF Above (°)</label><input type="number" class="th-off" data-idx="'+r.idx+'" step="0.5" value="'+r.off_above.toFixed(1)+'"></div>';
+  var onDisp=useFahr?cToF(r.on_below):r.on_below;
+  var offDisp=useFahr?cToF(r.off_above):r.off_above;
+  h+='<div class="th-field"><label>ON Below ('+tempUnit()+')</label><input type="number" class="th-on" data-idx="'+r.idx+'" step="0.5" value="'+onDisp.toFixed(1)+'"></div>';
+  h+='<div class="th-field"><label>OFF Above ('+tempUnit()+')</label><input type="number" class="th-off" data-idx="'+r.idx+'" step="0.5" value="'+offDisp.toFixed(1)+'"></div>';
   h+='</div></div>';
  });
  p.innerHTML=h;
@@ -888,7 +908,7 @@ function pollThermostat(){
    if(!card)return;
    const rd=card.querySelector('.th-reading');
    if(rd){
-    rd.textContent=(r.reading!=null?r.reading.toFixed(1)+'°':'--')+' ('+(r.relay_on?'ON':'OFF')+')';
+    rd.textContent=(r.reading!=null?tempVal(r.reading,1)+tempUnit():'--')+' ('+(r.relay_on?'ON':'OFF')+')';
     rd.className='th-reading '+(r.relay_on?'th-on':'th-off');
    }
   });
@@ -904,8 +924,8 @@ function saveThermostat(){
    idx:r.idx,
    enabled:el_en?el_en.checked:false,
    sensor:el_s?el_s.value:'',
-   on_below:el_on?parseFloat(el_on.value):5.0,
-   off_above:el_off?parseFloat(el_off.value):10.0
+   on_below:useFahr?(((el_on?parseFloat(el_on.value):5.0)-32)*5/9):(el_on?parseFloat(el_on.value):5.0),
+   off_above:useFahr?(((el_off?parseFloat(el_off.value):10.0)-32)*5/9):(el_off?parseFloat(el_off.value):10.0)
   };
  });
  fetch('/api/thermostat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)})
@@ -941,7 +961,7 @@ function clearEventLog(){
 }
 
 /* ── Init ── */
-initGauges();initPanels();poll();setInterval(poll,2500);
+initGauges();initPanels();updateTempUnits();poll();setInterval(poll,2500);
 loadExercise();setInterval(pollExercise,3000);
 loadThermostat();setInterval(pollThermostat,5000);
 loadEventLog();setInterval(loadEventLog,10000);
@@ -1803,6 +1823,9 @@ esp_err_t SmartgenHSC941Web::handle_api_status_(httpd_req_t *req) {
     } else {
       json += "null";
     }
+    json += ",\"ambient_temp_name\":\"";
+    json += self->ambient_temp_name_;
+    json += "\"";
     json += '}';
   }
 
@@ -1817,6 +1840,9 @@ esp_err_t SmartgenHSC941Web::handle_api_status_(httpd_req_t *req) {
     } else {
       json += "null";
     }
+    json += ",\"ambient_humidity_name\":\"";
+    json += self->ambient_humidity_name_;
+    json += "\"";
     json += '}';
   }
 
@@ -2176,7 +2202,9 @@ esp_err_t SmartgenHSC941Web::handle_api_thermostat_get_(httpd_req_t *req) {
   json += "{\"key\":\"water_temp\",\"label\":\"Water Temp\"}";
   json += ",{\"key\":\"aux1\",\"label\":\"Aux Sensor 1\"}";
   if (self->get_ambient_temp() != nullptr) {
-    json += ",{\"key\":\"ambient_temp\",\"label\":\"Ambient Temp\"}";
+    json += ",{\"key\":\"ambient_temp\",\"label\":\"";
+    json += self->get_ambient_temp_name();
+    json += "\"}";
   }
   json += "]}";
 
