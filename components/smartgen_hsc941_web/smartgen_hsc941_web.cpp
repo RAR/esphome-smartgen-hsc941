@@ -594,6 +594,7 @@ function update(d){
  const hasC=s.gen_vc!=null&&s.gen_vc>0;
  const hide=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
  hide('phC',hasC);
+ const pg=document.querySelector('.phases');if(pg)pg.style.gridTemplateColumns=hasC?'1fr 1fr 1fr':'1fr 1fr';
  hide('llBC',hasC);hide('llCA',hasC);
  // Line-line + power
  const t=[['v_ab','gen_vab'],['v_bc','gen_vbc'],['v_ca','gen_vca'],['v_tkw','total_kw'],['v_kvar','kvar'],['v_kva','kva'],['v_pf','pf']];
