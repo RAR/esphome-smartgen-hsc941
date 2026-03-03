@@ -82,10 +82,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .gauge-svg{width:140px;height:140px}
 .gauge-track{fill:none;stroke:var(--gauge-track);stroke-width:10;stroke-linecap:round}
 .gauge-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dashoffset .8s cubic-bezier(.4,0,.2,1),stroke .5s}
-.gauge-center{font-size:1.5rem;font-weight:700;fill:var(--text);text-anchor:middle;dominant-baseline:central}
-.gauge-unit{font-size:.6rem;fill:var(--dim);text-anchor:middle;font-weight:500}
-.gauge-label{margin-top:6px;font-size:.72rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
-.gauge-range{font-size:.6rem;color:var(--faint);margin-top:2px}
+.gauge-center{font-size:1.8rem;font-weight:700;fill:var(--text);text-anchor:middle;dominant-baseline:central}
+.gauge-unit{font-size:.75rem;fill:var(--dim);text-anchor:middle;font-weight:500}
+.gauge-label{margin-top:6px;font-size:.85rem;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.gauge-range{font-size:.7rem;color:var(--faint);margin-top:2px}
 
 /* ── Data Table ── */
 .dtable{width:100%;border-collapse:collapse}
