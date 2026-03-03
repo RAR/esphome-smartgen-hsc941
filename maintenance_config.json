@@ -1,0 +1,30 @@
+{
+  "total_hours": 0,
+  "items": [
+    {
+      "name": "Oil Change",
+      "interval": 250,
+      "reset": 0
+    },
+    {
+      "name": "Air Filter",
+      "interval": 500,
+      "reset": 0
+    },
+    {
+      "name": "Coolant Service",
+      "interval": 1000,
+      "reset": 0
+    },
+    {
+      "name": "Belt Inspection",
+      "interval": 500,
+      "reset": 0
+    },
+    {
+      "name": "Battery Service",
+      "interval": 500,
+      "reset": 0
+    }
+  ]
+}

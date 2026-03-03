@@ -518,12 +518,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="card">
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg><h2>Maintenance Tracker</h2></div>
   <div class="card-body">
-   <div class="maint-toolbar">
-    <button onclick="exportMaint()">Export Config</button>
-    <button onclick="document.getElementById('maintFileIn').click()">Import Config</button>
-    <input type="file" id="maintFileIn" accept=".json" onchange="importMaint(event)">
-   </div>
    <div id="maintList"></div>
+  </div>
+ </div>
+</div>
+<!-- Config Export / Import -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><h2>Backup &amp; Restore</h2></div>
+  <div class="card-body">
+   <p style="font-size:.72rem;color:var(--dim);margin:0 0 10px">Export or import all configuration: exercise schedule, thermostat, maintenance tracker, and fuel settings.</p>
+   <div class="maint-toolbar">
+    <button onclick="exportAllConfig()">Export All Config</button>
+    <button onclick="document.getElementById('cfgFileIn').click()">Import All Config</button>
+    <input type="file" id="cfgFileIn" accept=".json" onchange="importAllConfig(event)">
+   </div>
   </div>
  </div>
 </div>
@@ -1118,11 +1127,9 @@ function pushBatt(v){if(v==null||v<=0)return;
 }
 
 /* ── Maintenance Tracker ── */
-let _maintData=null;
 function loadMaint(){fetch('/api/maintenance').then(r=>r.json()).then(d=>{
  const s=document.getElementById('maintSection');
  if(!d.items||!d.items.length){if(s)s.style.display='none';return;}
- _maintData=d;
  if(s)s.style.display='';renderMaint(d.items,d.total_hours||0);
 }).catch(()=>{});}
 function renderMaint(items,hrs){const el=document.getElementById('maintList');if(!el)return;let h='';
@@ -1145,16 +1152,41 @@ function saveMaintInterval(i){const inp=document.getElementById('maintIvIn'+i);i
  .then(r=>r.json()).then(d=>{toast(d.ok?'Interval updated':'Failed',d.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));}
 function resetMaint(i){fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset',index:i})})
  .then(r=>r.json()).then(d=>{toast(d.ok?'Service reset':'Failed',d.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));}
-function exportMaint(){if(!_maintData){toast('No data','err');return;}
- const blob=new Blob([JSON.stringify(_maintData,null,2)],{type:'application/json'});
- const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='maintenance_config.json';a.click();URL.revokeObjectURL(a.href);}
-function importMaint(ev){const file=ev.target.files[0];if(!file)return;
- const reader=new FileReader();reader.onload=function(e){try{
-  const d=JSON.parse(e.target.result);
-  if(!d.items||!Array.isArray(d.items)){toast('Invalid file','err');return;}
-  fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'import',items:d.items})})
-   .then(r=>r.json()).then(r=>{toast(r.ok?'Config imported':'Failed',r.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));
- }catch(x){toast('Invalid JSON','err');}};reader.readAsText(file);ev.target.value='';}
+
+/* ── Config Export / Import (all settings) ── */
+async function exportAllConfig(){
+ try{
+  const [ex,th,mt,fu]=await Promise.all([
+   fetch('/api/exercise').then(r=>r.json()),
+   fetch('/api/thermostat').then(r=>r.json()),
+   fetch('/api/maintenance').then(r=>r.json()),
+   fetch('/api/fuel').then(r=>r.json())
+  ]);
+  const cfg={version:1,exported:new Date().toISOString(),
+   exercise:{enabled:ex.enabled,day:ex.day,hour:ex.hour,minute:ex.minute,duration:ex.duration,load_transfer:ex.load_transfer},
+   thermostat:(th.relays||[]).map(r=>({idx:r.idx,name:r.name,enabled:r.enabled,sensor:r.sensor,on_below:r.on_below,off_above:r.off_above})),
+   maintenance:{items:mt.items||[],total_hours:mt.total_hours||0},
+   fuel:{tank_size:fu.tank_size||0,burn_rate:fu.burn_rate||0}
+  };
+  const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='genset_config_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);
+  toast('Config exported','ok');
+ }catch(e){toast('Export failed','err');}
+}
+async function importAllConfig(ev){const file=ev.target.files[0];if(!file)return;
+ const reader=new FileReader();reader.onload=async function(e){try{
+  const cfg=JSON.parse(e.target.result);
+  if(!cfg.version){toast('Invalid config file','err');return;}
+  let ok=0,fail=0;
+  // Exercise
+  if(cfg.exercise){try{const r=await fetch('/api/exercise',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg.exercise)});const d=await r.json();if(d.ok)ok++;else fail++;}catch(x){fail++;}}
+  // Thermostat
+  if(cfg.thermostat&&cfg.thermostat.length){try{const r=await fetch('/api/thermostat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg.thermostat)});const d=await r.json();if(d.ok)ok++;else fail++;}catch(x){fail++;}}
+  // Maintenance
+  if(cfg.maintenance&&cfg.maintenance.items){try{const r=await fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'import',items:cfg.maintenance.items})});const d=await r.json();if(d.ok)ok++;else fail++;}catch(x){fail++;}}
+  toast(ok+' config(s) imported'+(fail?' ('+fail+' failed)':''),fail?'err':'ok');
+  loadExercise();loadThermostat();loadMaint();loadFuel();
+ }catch(x){toast('Invalid JSON file','err');}};reader.readAsText(file);ev.target.value='';}
 
 /* ── Fuel Estimator ── */
 function loadFuel(){fetch('/api/fuel').then(r=>r.json()).then(d=>{
