@@ -451,7 +451,7 @@ function mkGauge(containerId,label,unit,min,max,color,decimals){
    <circle class="gauge-track" cx="70" cy="70" r="${R}" stroke-dasharray="${len} ${C}" transform="rotate(${rot} 70 70)"/>
    <circle class="gauge-fill" cx="70" cy="70" r="${R}" stroke="${color}" stroke-dasharray="0 ${C}" transform="rotate(${rot} 70 70)" id="gf_${containerId}"/>
    <text class="gauge-center" x="70" y="66" id="gv_${containerId}">--</text>
-   <text class="gauge-unit" x="70" y="84">${unit}</text>
+   <text class="gauge-unit" x="70" y="92">${unit}</text>
   </svg>
   <div class="gauge-label">${label}</div>
   <div class="gauge-range">${min} &ndash; ${max} ${unit}</div>`;
