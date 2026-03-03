@@ -228,6 +228,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .maint-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
 @media(max-width:600px){.maint-fields{grid-template-columns:1fr}}
 .maint-btns{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+.maint-edit-row{display:flex;align-items:center;gap:4px;margin-top:2px}
+.maint-edit-row input{width:60px;padding:2px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:4px;font-size:.72rem;text-align:center}
+.maint-edit-btn{background:none;border:none;color:var(--dim);cursor:pointer;padding:1px 4px;font-size:.72rem}
+.maint-edit-btn:hover{color:var(--cyan)}
+.maint-toolbar{display:flex;gap:8px;margin-bottom:10px;justify-content:flex-end}
+.maint-toolbar button{font-size:.68rem;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer}
+.maint-toolbar button:hover{border-color:var(--cyan);color:var(--cyan)}
+.maint-toolbar input[type=file]{display:none}
 
 /* ── Fuel Estimator ── */
 .fuel-bar-outer{height:20px;background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid var(--border);position:relative}
@@ -509,7 +517,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 <div class="row r-full" id="maintSection" style="display:none">
  <div class="card">
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg><h2>Maintenance Tracker</h2></div>
-  <div class="card-body"><div id="maintList"></div></div>
+  <div class="card-body">
+   <div class="maint-toolbar">
+    <button onclick="exportMaint()">Export Config</button>
+    <button onclick="document.getElementById('maintFileIn').click()">Import Config</button>
+    <input type="file" id="maintFileIn" accept=".json" onchange="importMaint(event)">
+   </div>
+   <div id="maintList"></div>
+  </div>
  </div>
 </div>
 </div><!-- /sec-config -->
@@ -1103,21 +1118,43 @@ function pushBatt(v){if(v==null||v<=0)return;
 }
 
 /* ── Maintenance Tracker ── */
+let _maintData=null;
 function loadMaint(){fetch('/api/maintenance').then(r=>r.json()).then(d=>{
  const s=document.getElementById('maintSection');
  if(!d.items||!d.items.length){if(s)s.style.display='none';return;}
+ _maintData=d;
  if(s)s.style.display='';renderMaint(d.items,d.total_hours||0);
 }).catch(()=>{});}
 function renderMaint(items,hrs){const el=document.getElementById('maintList');if(!el)return;let h='';
  items.forEach((m,i)=>{const used=hrs-m.reset;const rem=m.interval-used;
   const cls=rem<=0?'maint-overdue':rem<m.interval*0.1?'maint-due':'';
   const rc=rem<=0?'overdue':rem<m.interval*0.1?'due':'ok';
-  h+='<div class="maint-item '+cls+'"><div><div class="maint-name">'+m.name+'</div><div class="maint-info">Every '+m.interval+'h \u2022 '+Math.round(used)+'h since service</div></div>';
+  h+='<div class="maint-item '+cls+'"><div><div class="maint-name">'+m.name+'</div>';
+  h+='<div class="maint-edit-row"><span class="maint-info" id="maintIv'+i+'">Every '+m.interval+'h</span>';
+  h+=' <button class="maint-edit-btn" title="Edit interval" onclick="editMaintInterval('+i+','+m.interval+')">\u270E</button></div>';
+  h+='<div class="maint-info">'+Math.round(used)+'h since service</div></div>';
   h+='<div style="text-align:right"><div class="maint-remaining '+rc+'">'+(rem>0?Math.round(rem)+'h left':'OVERDUE '+Math.abs(Math.round(rem))+'h')+'</div>';
   h+='<button class="evtlog-clear" style="margin-top:4px" onclick="resetMaint('+i+')">Reset</button></div></div>';
  });el.innerHTML=h;}
+function editMaintInterval(i,cur){const sp=document.getElementById('maintIv'+i);if(!sp)return;
+ sp.innerHTML='<input type="number" min="1" max="9999" value="'+cur+'" id="maintIvIn'+i+'" onkeydown="if(event.key===\'Enter\')saveMaintInterval('+i+')">';
+ sp.innerHTML+=' <button class="maint-edit-btn" onclick="saveMaintInterval('+i+')">\u2714</button>';}
+function saveMaintInterval(i){const inp=document.getElementById('maintIvIn'+i);if(!inp)return;
+ const v=parseInt(inp.value);if(!v||v<1){toast('Invalid interval','err');return;}
+ fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'update',index:i,interval:v})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Interval updated':'Failed',d.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));}
 function resetMaint(i){fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset',index:i})})
  .then(r=>r.json()).then(d=>{toast(d.ok?'Service reset':'Failed',d.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));}
+function exportMaint(){if(!_maintData){toast('No data','err');return;}
+ const blob=new Blob([JSON.stringify(_maintData,null,2)],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='maintenance_config.json';a.click();URL.revokeObjectURL(a.href);}
+function importMaint(ev){const file=ev.target.files[0];if(!file)return;
+ const reader=new FileReader();reader.onload=function(e){try{
+  const d=JSON.parse(e.target.result);
+  if(!d.items||!Array.isArray(d.items)){toast('Invalid file','err');return;}
+  fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'import',items:d.items})})
+   .then(r=>r.json()).then(r=>{toast(r.ok?'Config imported':'Failed',r.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));
+ }catch(x){toast('Invalid JSON','err');}};reader.readAsText(file);ev.target.value='';}
 
 /* ── Fuel Estimator ── */
 function loadFuel(){fetch('/api/fuel').then(r=>r.json()).then(d=>{
@@ -2936,13 +2973,14 @@ esp_err_t SmartgenHSC941Web::handle_api_maintenance_post_(httpd_req_t *req) {
   }
 
   int content_len = req->content_len;
-  if (content_len <= 0 || content_len > 256) {
+  if (content_len <= 0 || content_len > 1024) {
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
     return ESP_FAIL;
   }
-  char body[257];
+  char *body = new char[content_len + 1];
   int received = httpd_req_recv(req, body, content_len);
   if (received <= 0) {
+    delete[] body;
     httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
     return ESP_FAIL;
   }
@@ -2968,7 +3006,61 @@ esp_err_t SmartgenHSC941Web::handle_api_maintenance_post_(httpd_req_t *req) {
       }
     }
   }
+  // Parse {"action":"update","index":N,"interval":V}
+  else if (strstr(body, "\"update\"")) {
+    const char *idx_p = strstr(body, "\"index\":");
+    const char *iv_p = strstr(body, "\"interval\":");
+    if (idx_p && iv_p) {
+      int idx = atoi(idx_p + 8);
+      int iv = atoi(iv_p + 11);
+      if (idx >= 0 && idx < MAX_MAINT_ITEMS && iv > 0 && iv <= 9999) {
+        self->maint_items_[idx].interval_hours = (uint16_t) iv;
+        self->save_maintenance_config_();
+        ESP_LOGI(TAG, "Maintenance interval updated: %s = %dh",
+                 self->maint_items_[idx].name.c_str(), iv);
+      }
+    }
+  }
+  // Parse {"action":"import","items":[{"name":...,"interval":...,"reset":...}]}
+  else if (strstr(body, "\"import\"")) {
+    const char *p = strstr(body, "\"items\"");
+    if (p) {
+      uint8_t idx = 0;
+      const char *cur = p;
+      while (idx < MAX_MAINT_ITEMS) {
+        const char *start = strchr(cur, '{');
+        if (!start) break;
+        const char *end = strchr(start, '}');
+        if (!end) break;
+        // Extract "name":"..."
+        const char *nk = strstr(start, "\"name\":\"");
+        if (nk && nk < end) {
+          nk += 8;
+          const char *nq = strchr(nk, '"');
+          if (nq && nq < end) {
+            self->maint_items_[idx].name = std::string(nk, nq);
+          }
+        }
+        // Extract "interval":N
+        const char *ik = strstr(start, "\"interval\":");
+        if (ik && ik < end) {
+          int iv = atoi(ik + 11);
+          if (iv > 0 && iv <= 9999) self->maint_items_[idx].interval_hours = (uint16_t) iv;
+        }
+        // Extract "reset":N
+        const char *rk = strstr(start, "\"reset\":");
+        if (rk && rk < end) {
+          self->maint_items_[idx].last_reset_hours = strtof(rk + 8, nullptr);
+        }
+        idx++;
+        cur = end + 1;
+      }
+      self->save_maintenance_config_();
+      ESP_LOGI(TAG, "Maintenance config imported (%u items)", idx);
+    }
+  }
 
+  delete[] body;
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *r = R"({"ok":true})";
