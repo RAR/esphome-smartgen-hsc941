@@ -213,9 +213,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .spark-area{opacity:.15}
 
 /* ── Battery trend ── */
-.batt-trend{display:flex;gap:16px;align-items:center;margin-top:6px;padding:6px 0}
-.batt-trend-item{font-size:.68rem;color:var(--dim)}
-.batt-trend-item span{font-weight:700;color:var(--text)}
+
 
 /* ── Maintenance ── */
 .maint-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1px solid var(--border)}
@@ -372,11 +370,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
     <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
    </table>
-   <div class="batt-trend" id="battTrend" style="display:none">
-    <span class="batt-trend-item">24h Min: <span id="battMin">--</span>V</span>
-    <span class="batt-trend-item">Avg: <span id="battAvg">--</span>V</span>
-    <span class="batt-trend-item">Max: <span id="battMax">--</span>V</span>
-   </div>
   </div>
  </div>
 </div>
@@ -533,6 +526,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="runtime-item"><div class="runtime-val" id="rt_kwh">--</div><div class="runtime-lbl">Total kWh</div></div>
     <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
     <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
+   </div>
+   <div class="runtime-row" style="margin-top:8px">
+    <div class="runtime-item"><div class="runtime-val" id="battMin">--</div><div class="runtime-lbl">Battery 24h Min</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="battAvg">--</div><div class="runtime-lbl">Battery 24h Avg</div></div>
+    <div class="runtime-item"><div class="runtime-val" id="battMax">--</div><div class="runtime-lbl">Battery 24h Max</div></div>
    </div>
   </div>
  </div>
@@ -706,8 +704,12 @@ function update(d){
  const t=[['v_ab','gen_vab'],['v_bc','gen_vbc'],['v_ca','gen_vca'],['v_tkw','total_kw'],['v_kvar','kvar'],['v_kva','kva'],['v_pf','pf']];
  t.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
  // Engine
- const eng=[['v_op','oil_press'],['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1'],['v_es','eng_status'],['v_as','auto_status']];
+ const ENG_STATES=['Standby','Preheat','Fuel Output','Crank','Crank Rest','Safety On','Start Idle','Warming Up','Wait On-load','Running','Cooling','Stop Idle','ETS','Wait Stop','Stop Fail'];
+ const AUTO_STATES=['Standby','Mains OK Delay','Mains Fail Delay','Start Delay','Starting','Warm-up','ATS Close Delay','On Load','Mains Return Delay','Cool Down','ATS Open Delay','ATS Opened','Stop Delay','Stopping'];
+ const eng=[['v_op','oil_press'],['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1']];
  eng.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
+ {const e=document.getElementById('v_es');if(e){const v=s.eng_status;e.textContent=v!=null?(ENG_STATES[Math.floor(v)]||v):'--';}}
+ {const e=document.getElementById('v_as');if(e){const v=s.auto_status;e.textContent=v!=null?(AUTO_STATES[Math.floor(v)]||v):'--';}}
  // Water temp with unit conversion
  {const e=document.getElementById('v_wt');if(e)e.textContent=tempVal(s.water_temp,1);}
  pushSpark(s.load_pct);renderSparkline();pushBatt(s.batt_v);
@@ -1096,9 +1098,8 @@ function renderSparkline(){const w=document.getElementById('loadSparkWrap');if(!
 let bMin=999,bMax=0,bSum=0,bCnt=0;
 function pushBatt(v){if(v==null||v<=0)return;
  if(v<bMin)bMin=v;if(v>bMax)bMax=v;bSum+=v;bCnt++;
- const el=document.getElementById('battTrend');if(el)el.style.display='';
  const mn=document.getElementById('battMin'),mx=document.getElementById('battMax'),av=document.getElementById('battAvg');
- if(mn)mn.textContent=bMin.toFixed(1);if(mx)mx.textContent=bMax.toFixed(1);if(av)av.textContent=(bSum/bCnt).toFixed(1);
+ if(mn)mn.textContent=bMin.toFixed(1)+'V';if(mx)mx.textContent=bMax.toFixed(1)+'V';if(av)av.textContent=(bSum/bCnt).toFixed(1)+'V';
 }
 
 /* ── Maintenance Tracker ── */
