@@ -1,9 +1,10 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.const import CONF_ID, CONF_PORT
+from esphome.components.esp32 import include_builtin_idf_component
 
 CODEOWNERS = ["@rar"]
-DEPENDENCIES = ["smartgen_hsc941", "network"]
+DEPENDENCIES = ["smartgen_hsc941", "network", "esp32"]
 
 CONF_SMARTGEN_ID = "smartgen_hsc941_id"
 CONF_CSS_URL = "css_url"
@@ -41,6 +42,9 @@ CONFIG_SCHEMA = cv.Schema(schema).extend(cv.COMPONENT_SCHEMA)
 
 
 async def to_code(config):
+    # Re-enable SPIFFS IDF component (excluded by default in ESPHome)
+    include_builtin_idf_component("spiffs")
+
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
 

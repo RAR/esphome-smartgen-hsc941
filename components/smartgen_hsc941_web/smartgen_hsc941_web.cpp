@@ -3,6 +3,7 @@
 #include "esphome/core/application.h"
 #include <cstring>
 #include <ctime>
+#include <sys/stat.h>
 
 namespace esphome {
 namespace smartgen_hsc941_web {
