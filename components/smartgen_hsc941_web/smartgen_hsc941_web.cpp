@@ -107,15 +107,30 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .ph-a{border-top:2px solid #f87171}.ph-b{border-top:2px solid #fbbf24}.ph-c{border-top:2px solid #60a5fa}
 
 /* ── Annunciator Panel ── */
+.ann-summary{display:flex;flex-direction:column;gap:6px}
+.ann-active-list{display:flex;flex-direction:column;gap:4px}
+.ann-active{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;font-size:.78rem;font-weight:600;animation:ann-pulse 2s ease-in-out infinite}
+.ann-active.sd{background:#ef444418;border:1px solid #ef444435;color:#fca5a5}
+.ann-active.w{background:#f59e0b18;border:1px solid #f59e0b35;color:#fcd34d}
+@keyframes ann-pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.ann-active .ann-icon{width:18px;height:18px;flex-shrink:0}
+.ann-ok{display:flex;align-items:center;gap:10px;padding:16px;border-radius:8px;background:#22c55e08;border:1px solid #22c55e20;color:var(--green);font-size:.82rem;font-weight:600}
+.ann-ok svg{width:20px;height:20px;flex-shrink:0}
+.ann-toggle{display:flex;align-items:center;gap:6px;margin-top:8px;padding:0;background:none;border:none;color:var(--dim);font-size:.65rem;cursor:pointer;letter-spacing:.04em;text-transform:uppercase;font-weight:600;transition:color .2s}
+.ann-toggle:hover{color:var(--accent)}
+.ann-toggle svg{width:12px;height:12px;transition:transform .2s}
+.ann-toggle.open svg{transform:rotate(180deg)}
+.ann-full{display:none;margin-top:8px}
+.ann-full.show{display:block}
 .ann-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:2px}
-.ann{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;font-size:.72rem;font-weight:500;transition:background .3s}
-.ann.active-sd{background:#ef444420;color:#fca5a5}.ann.active-w{background:#f59e0b20;color:#fcd34d}
-.ann .lamp{width:10px;height:10px;border-radius:50%;flex-shrink:0;border:1.5px solid #ffffff10;transition:all .3s}
+.ann{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:4px;font-size:.68rem;font-weight:500;color:var(--faint);transition:all .3s}
+.ann.active-sd{background:#ef444415;color:#fca5a5}.ann.active-w{background:#f59e0b15;color:#fcd34d}
+.ann .lamp{width:8px;height:8px;border-radius:50%;flex-shrink:0;transition:all .3s}
 .lamp.off{background:#252a3a}
-.lamp.red{background:var(--red);box-shadow:0 0 8px var(--red),0 0 20px #ef444440}
-.lamp.amber{background:var(--orange);box-shadow:0 0 8px var(--orange),0 0 20px #f59e0b40}
-.lamp.green{background:var(--green);box-shadow:0 0 8px var(--green),0 0 20px #22c55e40}
-.lamp.blue{background:var(--blue);box-shadow:0 0 6px var(--blue)}
+.lamp.red{background:var(--red);box-shadow:0 0 6px var(--red)}
+.lamp.amber{background:var(--orange);box-shadow:0 0 6px var(--orange)}
+.lamp.green{background:var(--green);box-shadow:0 0 6px var(--green)}
+.lamp.blue{background:var(--blue);box-shadow:0 0 4px var(--blue)}
 
 /* ── I/O row ── */
 .io-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
@@ -311,11 +326,18 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  </div>
 </div>
 
-<!-- Annunciator -->
+<!-- Alarms -->
 <div class="row r-full">
  <div class="card">
-  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><h2>Alarm Annunciator</h2></div>
-  <div class="card-body"><div class="ann-grid" id="annPanel"></div></div>
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><h2>Alarms</h2></div>
+  <div class="card-body">
+   <div class="ann-summary" id="annSummary"></div>
+   <button class="ann-toggle" id="annToggle" onclick="toggleAnnFull()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+    Show all indicators
+   </button>
+   <div class="ann-full" id="annFull"><div class="ann-grid" id="annPanel"></div></div>
+  </div>
  </div>
 </div>
 
@@ -436,7 +458,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
    </div>
   </div>
  </div>
-</div>
 </div>
 <!-- Event Log -->
 <div class="row r-full">
@@ -593,16 +614,31 @@ function update(d){
   const ts=String(Math.floor(s.ctrl_hour)).padStart(2,'0')+':'+String(Math.floor(s.ctrl_min||0)).padStart(2,'0')+':'+String(Math.floor(s.ctrl_sec||0)).padStart(2,'0');
   document.getElementById('hdrTime').textContent='Controller '+ts;
  }
- // Annunciator
+ // Annunciator — active alarms summary + full grid
  let sdCount=0,wCount=0;
+ let activeHtml='';
  ANN.forEach(a=>{
   const on=b[a.k]===true;
-  if(on){if(a.t==='sd')sdCount++;else wCount++;}
+  if(on){
+   if(a.t==='sd')sdCount++;else wCount++;
+   const icon=a.t==='sd'
+    ?'<svg class="ann-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    :'<svg class="ann-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+   activeHtml+=`<div class="ann-active ${a.t==='sd'?'sd':'w'}">${icon}<span>${a.l}</span></div>`;
+  }
   const lamp=document.getElementById('lmp_'+a.k);
   const row=document.getElementById('ann_'+a.k);
   if(lamp)lamp.className='lamp '+(on?(a.t==='w'?'amber':'red'):'off');
   if(row)row.className='ann'+(on?(a.t==='w'?' active-w':' active-sd'):'');
  });
+ const summary=document.getElementById('annSummary');
+ if(summary){
+  if(sdCount===0&&wCount===0){
+   summary.innerHTML='<div class="ann-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>All systems normal — no active alarms</div>';
+  } else {
+   summary.innerHTML='<div class="ann-active-list">'+activeHtml+'</div>';
+  }
+ }
  // Header alarm badge
  const ab=document.getElementById('alarmBadge');
  if(b.estop){ab.textContent='E-STOP';ab.className='badge badge-sd';}
@@ -894,6 +930,14 @@ initGauges();initPanels();poll();setInterval(poll,2500);
 loadExercise();setInterval(pollExercise,3000);
 loadThermostat();setInterval(pollThermostat,5000);
 loadEventLog();setInterval(loadEventLog,10000);
+
+function toggleAnnFull(){
+ const f=document.getElementById('annFull');
+ const t=document.getElementById('annToggle');
+ f.classList.toggle('show');
+ t.classList.toggle('open');
+ t.querySelector('svg').nextSibling.textContent=f.classList.contains('show')?' Hide indicators':' Show all indicators';
+}
 </script>
 </body>
 </html>)rawliteral";
