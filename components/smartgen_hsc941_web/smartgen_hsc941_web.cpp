@@ -317,7 +317,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .pin-dg input{width:42px;height:50px;background:var(--surface);border:2px solid var(--border);border-radius:8px;color:var(--text);font-size:1.3rem;text-align:center;font-weight:700;outline:none;-webkit-text-security:disc}
 .pin-dg input:focus{border-color:var(--blue)}
 .pin-btns{display:flex;gap:8px;justify-content:center}.pin-btns button{flex:1;padding:8px 0;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
-.pin-ok{background:var(--blue);color:#fff}.pin-rm{background:var(--red);color:#fff}.pin-cn{background:var(--faint);color:var(--text)}
+.pin-ok{background:var(--blue);color:#fff}.pin-cn{background:var(--faint);color:var(--text)}
 .pin-msg{font-size:.7rem;color:var(--red);margin-top:8px;min-height:16px}
 
 </style>
@@ -637,7 +637,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="pin-btns">
    <button class="pin-cn" onclick="closePinModal()">Cancel</button>
    <button class="pin-ok" id="pinOkBtn" onclick="pinOk()">Unlock</button>
-   <button class="pin-rm" id="pinClearBtn" onclick="pinClearAction()" style="display:none">Remove</button>
   </div>
   <div class="pin-msg" id="pinMsg"></div>
  </div>
@@ -1126,17 +1125,16 @@ function clearEventLog(){
 }
 
 /* ── PIN Lock ── */
-var storedPin=localStorage.getItem('dashPin'),cfgPinDef=typeof cfgPin!=='undefined'?cfgPin:'',pinCode=storedPin!==null?storedPin:cfgPinDef,pinEnabled=pinCode.length===4,pinVerified=false,pendingCmdAfterPin=null,pinAction='';
-function requirePin(cb){if(!pinEnabled||pinVerified)return false;pendingCmdAfterPin=cb;document.getElementById('pinTitle').textContent='Enter PIN';document.getElementById('pinSub').textContent='PIN required for this action';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Unlock';pinAction='verify';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);return true;}
-function updateLockBtn(){var b=document.getElementById('lockBtn');if(!b)return;b.innerHTML=pinEnabled?'&#128274;':'&#128275;';b.title=pinEnabled?(pinVerified?'PIN active (unlocked)':'PIN lock active'):'Set PIN lock';}
-function openPinModal(){if(!pinEnabled){document.getElementById('pinTitle').textContent='Set PIN';document.getElementById('pinSub').textContent='Create a 4-digit PIN to lock controls';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Set';pinAction='set';}else if(pinVerified){document.getElementById('pinTitle').textContent='PIN Settings';document.getElementById('pinSub').textContent='Change or remove your PIN';document.getElementById('pinClearBtn').style.display='';document.getElementById('pinOkBtn').textContent='Change';pinAction='change';}else{document.getElementById('pinTitle').textContent='Unlock';document.getElementById('pinSub').textContent='Enter PIN to unlock controls';document.getElementById('pinClearBtn').style.display='';document.getElementById('pinOkBtn').textContent='Unlock';pinAction='verify';}clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);}
+var pinCode=typeof cfgPin!=='undefined'?cfgPin:'',pinEnabled=pinCode.length===4,pinVerified=false,pendingCmdAfterPin=null;
+function requirePin(cb){if(!pinEnabled||pinVerified)return false;pendingCmdAfterPin=cb;document.getElementById('pinTitle').textContent='Enter PIN';document.getElementById('pinSub').textContent='PIN required for this action';document.getElementById('pinOkBtn').textContent='Unlock';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);return true;}
+function updateLockBtn(){var b=document.getElementById('lockBtn');if(!b)return;if(!pinEnabled){b.style.display='none';return;}b.innerHTML=pinVerified?'&#128275;':'&#128274;';b.title=pinVerified?'Controls unlocked (click to re-lock)':'PIN lock active';}
+function openPinModal(){if(!pinEnabled)return;if(pinVerified){pinVerified=false;updateLockBtn();toast('Controls locked','ok');return;}document.getElementById('pinTitle').textContent='Unlock';document.getElementById('pinSub').textContent='Enter PIN to unlock controls';document.getElementById('pinOkBtn').textContent='Unlock';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);}
 function closePinModal(){document.getElementById('pinOverlay').classList.remove('show');}
 function clearPinInputs(){for(var i=0;i<4;i++)document.getElementById('pin'+i).value='';}
 function getPinVal(){var v='';for(var i=0;i<4;i++)v+=document.getElementById('pin'+i).value;return v;}
 function pinAdv(el,nx){el.value=el.value.replace(/[^0-9]/g,'').slice(-1);if(el.value&&nx!=null)document.getElementById('pin'+nx).focus();}
 function pinBk(ev,i){if(ev.key==='Backspace'&&!ev.target.value&&i>0){document.getElementById('pin'+(i-1)).focus();}}
-function pinOk(){var v=getPinVal();if(v.length!==4){document.getElementById('pinMsg').textContent='Enter all 4 digits';return;}if(pinAction==='set'||pinAction==='change'){pinCode=v;localStorage.setItem('dashPin',pinCode);pinEnabled=true;pinVerified=true;updateLockBtn();closePinModal();toast('PIN '+(pinAction==='set'?'created':'changed'),'ok');}else if(pinAction==='verify'){if(v===pinCode){pinVerified=true;updateLockBtn();closePinModal();toast('Controls unlocked','ok');if(pendingCmdAfterPin){pendingCmdAfterPin();pendingCmdAfterPin=null;}}else{document.getElementById('pinMsg').textContent='Wrong PIN';clearPinInputs();document.getElementById('pin0').focus();}}else if(pinAction==='remove'){if(v===pinCode){pinCode='';localStorage.removeItem('dashPin');pinEnabled=false;pinVerified=false;updateLockBtn();closePinModal();toast('PIN removed','ok');}else{document.getElementById('pinMsg').textContent='Wrong PIN';clearPinInputs();document.getElementById('pin0').focus();}}}
-function pinClearAction(){document.getElementById('pinTitle').textContent='Remove PIN';document.getElementById('pinSub').textContent='Enter current PIN to confirm';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Remove';pinAction='remove';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pin0').focus();}
+function pinOk(){var v=getPinVal();if(v.length!==4){document.getElementById('pinMsg').textContent='Enter all 4 digits';return;}if(v===pinCode){pinVerified=true;updateLockBtn();closePinModal();toast('Controls unlocked','ok');if(pendingCmdAfterPin){pendingCmdAfterPin();pendingCmdAfterPin=null;}}else{document.getElementById('pinMsg').textContent='Wrong PIN';clearPinInputs();document.getElementById('pin0').focus();}}
 updateLockBtn();
 
 
