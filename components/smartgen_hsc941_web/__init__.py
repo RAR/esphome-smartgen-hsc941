@@ -10,6 +10,7 @@ CONF_SMARTGEN_ID = "smartgen_hsc941_id"
 CONF_CSS_URL = "css_url"
 CONF_JS_URL = "js_url"
 CONF_AMBIENT_TEMP_ID = "ambient_temp_id"
+CONF_SINGLE_PHASE = "single_phase"
 CONF_RELAY_IDS = [f"relay_{i}_id" for i in range(1, 9)]
 CONF_RELAY_NAMES = [f"relay_{i}_name" for i in range(1, 9)]
 
@@ -30,6 +31,7 @@ schema = {
     cv.Optional(CONF_PORT, default=8080): cv.port,
     cv.Optional(CONF_CSS_URL, default=""): cv.string,
     cv.Optional(CONF_JS_URL, default=""): cv.string,
+    cv.Optional(CONF_SINGLE_PHASE, default=False): cv.boolean,
     cv.Optional(CONF_AMBIENT_TEMP_ID): cv.use_id(Sensor),
 }
 
@@ -56,6 +58,9 @@ async def to_code(config):
         cg.add(var.set_css_url(config[CONF_CSS_URL]))
     if config[CONF_JS_URL]:
         cg.add(var.set_js_url(config[CONF_JS_URL]))
+
+    if config[CONF_SINGLE_PHASE]:
+        cg.add(var.set_single_phase(True))
 
     if CONF_AMBIENT_TEMP_ID in config:
         sens = await cg.get_variable(config[CONF_AMBIENT_TEMP_ID])

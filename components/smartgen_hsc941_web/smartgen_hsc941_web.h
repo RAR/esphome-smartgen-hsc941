@@ -68,6 +68,7 @@ class SmartgenHSC941Web : public Component {
   void set_css_url(const std::string &url) { this->css_url_ = url; }
   void set_js_url(const std::string &url) { this->js_url_ = url; }
   void set_ambient_temp_sensor(sensor::Sensor *s) { this->ambient_temp_ = s; }
+  void set_single_phase(bool v) { this->single_phase_ = v; }
   void set_relay(uint8_t index, switch_::Switch *sw, const std::string &name) {
     if (index < MAX_RELAYS) {
       this->relays_[index].sw = sw;
@@ -121,6 +122,7 @@ class SmartgenHSC941Web : public Component {
   std::string css_url_;
   std::string js_url_;
   sensor::Sensor *ambient_temp_{nullptr};
+  bool single_phase_{false};
   std::array<RelayInfo, MAX_RELAYS> relays_{};
 
   // ── Exercise schedule ──

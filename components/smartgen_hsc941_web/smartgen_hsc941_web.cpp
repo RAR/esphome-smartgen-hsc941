@@ -293,12 +293,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg><h2>Generator Output</h2></div>
   <div class="card-body">
    <div class="phases">
-    <div class="phase ph-a" id="phA"><div class="phase-label">Phase A</div><div class="phase-val" id="pv_a">--</div><div class="phase-sub"><span id="pi_a">--</span> A &bull; <span id="pp_a">--</span> kW</div></div>
-    <div class="phase ph-b" id="phB"><div class="phase-label">Phase B</div><div class="phase-val" id="pv_b">--</div><div class="phase-sub"><span id="pi_b">--</span> A &bull; <span id="pp_b">--</span> kW</div></div>
-    <div class="phase ph-c" id="phC"><div class="phase-label">Phase C</div><div class="phase-val" id="pv_c">--</div><div class="phase-sub"><span id="pi_c">--</span> A &bull; <span id="pp_c">--</span> kW</div></div>
+    <div class="phase ph-a" id="phA"><div class="phase-label" id="lblPhA">Phase A</div><div class="phase-val" id="pv_a">--</div><div class="phase-sub"><span id="pi_a">--</span> A &bull; <span id="pp_a">--</span> kW</div></div>
+    <div class="phase ph-b" id="phB"><div class="phase-label" id="lblPhB">Phase B</div><div class="phase-val" id="pv_b">--</div><div class="phase-sub"><span id="pi_b">--</span> A &bull; <span id="pp_b">--</span> kW</div></div>
+    <div class="phase ph-c" id="phC"><div class="phase-label" id="lblPhC">Phase C</div><div class="phase-val" id="pv_c">--</div><div class="phase-sub"><span id="pi_c">--</span> A &bull; <span id="pp_c">--</span> kW</div></div>
    </div>
    <table class="dtable" style="margin-top:10px">
-    <tr id="llAB"><td class="dlbl">Line-Line AB</td><td class="dval"><span id="v_ab">--</span><span class="dunit">V</span></td></tr>
+    <tr id="llAB"><td class="dlbl" id="lblLLAB">Line-Line AB</td><td class="dval"><span id="v_ab">--</span><span class="dunit">V</span></td></tr>
     <tr id="llBC"><td class="dlbl">Line-Line BC</td><td class="dval"><span id="v_bc">--</span><span class="dunit">V</span></td></tr>
     <tr id="llCA"><td class="dlbl">Line-Line CA</td><td class="dval"><span id="v_ca">--</span><span class="dunit">V</span></td></tr>
     <tr><td class="dlbl">Total Active</td><td class="dval"><span id="v_tkw">--</span><span class="dunit">kW</span></td></tr>
@@ -591,11 +591,18 @@ function update(d){
  const ids=[['pv_a','gen_va'],['pv_b','gen_vb'],['pv_c','gen_vc'],['pi_a','ia'],['pi_b','ib'],['pi_c','ic'],['pp_a','pa_kw'],['pp_b','pb_kw'],['pp_c','pc_kw']];
  ids.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
  // Auto-hide unused phases (split-phase: A+B=240V, 3-phase: A+B+C)
- const hasC=s.gen_vc!=null&&s.gen_vc>0;
+ const sp=d.single_phase||false;
+ const hasC=!sp&&s.gen_vc!=null&&s.gen_vc>0;
  const hide=(id,show)=>{const e=document.getElementById(id);if(e)e.style.display=show?'':'none';};
  hide('phC',hasC);
  const pg=document.querySelector('.phases');if(pg)pg.style.gridTemplateColumns=hasC?'1fr 1fr 1fr':'1fr 1fr';
  hide('llBC',hasC);hide('llCA',hasC);
+ // Rename labels for single-phase / split-phase
+ if(sp){
+  const la=document.getElementById('lblPhA');if(la)la.textContent='L1';
+  const lb=document.getElementById('lblPhB');if(lb)lb.textContent='L2';
+  const ll=document.getElementById('lblLLAB');if(ll)ll.textContent='L1 \u2013 L2';
+ }
  // Line-line + power
  const t=[['v_ab','gen_vab'],['v_bc','gen_vbc'],['v_ca','gen_vca'],['v_tkw','total_kw'],['v_kvar','kvar'],['v_kva','kva'],['v_pf','pf']];
  t.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
@@ -1790,6 +1797,12 @@ esp_err_t SmartgenHSC941Web::handle_api_status_(httpd_req_t *req) {
       json += "null";
     }
     json += '}';
+  }
+
+  // Append single_phase flag
+  if (self->single_phase_) {
+    if (!json.empty() && json.back() == '}') json.pop_back();
+    json += ",\"single_phase\":true}";
   }
 
   // Append relay states if any configured
