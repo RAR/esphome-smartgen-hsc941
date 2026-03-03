@@ -31,7 +31,7 @@ const char SmartgenHSC941Web::DASHBOARD_HTML[] = R"rawliteral(<!DOCTYPE html>
  --text:#dee2ec;--dim:#6b7394;--faint:#3a4060;
  --red:#ef4444;--orange:#f59e0b;--green:#22c55e;--blue:#3b82f6;--cyan:#06b6d4;--purple:#a855f7;
  --red-bg:#ef444418;--orange-bg:#f59e0b18;--green-bg:#22c55e18;--blue-bg:#3b82f618;
- --gauge-track:#1e2235;--radius:10px;
+ --gauge-track:#1e2235;--gauge-card:#1f2436;--gauge-border:#2d3350;--radius:10px;
 }
 html{font-size:16px}
 body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -84,7 +84,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── Card ── */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
-.r-gauges .card{background:#1f2436;border-color:#2d3350}
+.r-gauges .card{background:var(--gauge-card);border-color:var(--gauge-border)}
 .card-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .card-hd .ico{width:16px;height:16px;opacity:.5}
 .card-hd h2{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
@@ -301,7 +301,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .th-field select:focus,.th-field input[type=number]:focus{border-color:var(--blue)}
 .th-field select option{background:var(--card);color:var(--text)}
 /* ── Light Theme ── */
-[data-theme="light"]{--bg:#f0f2f5;--surface:#f8f9fb;--card:#fff;--border:#d0d5dd;--text:#111827;--dim:#4b5563;--faint:#9ca3af;--gauge-track:#c0c7d0;--red-bg:#fef2f2;--orange-bg:#fffbeb;--green-bg:#f0fdf4;--blue-bg:#eff6ff}
+[data-theme="light"]{--bg:#f0f2f5;--surface:#f8f9fb;--card:#fff;--border:#d0d5dd;--text:#111827;--dim:#4b5563;--faint:#9ca3af;--gauge-track:#c0c7d0;--gauge-card:#edf0f4;--gauge-border:#d0d5dd;--red-bg:#fef2f2;--orange-bg:#fffbeb;--green-bg:#f0fdf4;--blue-bg:#eff6ff}
 [data-theme="light"] .hdr,[data-theme="light"] .nav{background:#fff;border-color:#d0d5dd}
 [data-theme="light"] .card{box-shadow:0 1px 3px rgba(0,0,0,.1)}
 [data-theme="light"] .ex-field select,[data-theme="light"] .ex-field input,[data-theme="light"] .th-field select,[data-theme="light"] .th-field input{background:#f3f4f6}
@@ -319,22 +319,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .pin-btns{display:flex;gap:8px;justify-content:center}.pin-btns button{flex:1;padding:8px 0;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
 .pin-ok{background:var(--blue);color:#fff}.pin-rm{background:var(--red);color:#fff}.pin-cn{background:var(--faint);color:var(--text)}
 .pin-msg{font-size:.7rem;color:var(--red);margin-top:8px;min-height:16px}
-/* ── ATS Power Flow ── */
-.ats-wrap{display:flex;align-items:center;justify-content:center;gap:0;padding:12px 8px;flex-wrap:nowrap}
-.ats-src{display:flex;flex-direction:column;gap:6px}
-.ats-nd{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:48px}
-.ats-ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--border);background:var(--surface);transition:all .3s}
-.ats-ic svg{width:20px;height:20px;stroke:var(--dim);fill:none;stroke-width:2;transition:stroke .3s}
-.ats-ic.on{border-color:var(--green);background:var(--green-bg)}.ats-ic.on svg{stroke:var(--green)}
-.ats-ic.fail{border-color:var(--red);background:var(--red-bg)}.ats-ic.fail svg{stroke:var(--red)}
-.ats-lb{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);white-space:nowrap}
-.ats-ln{flex:1;height:3px;min-width:20px;max-width:70px;background:var(--faint);border-radius:2px;position:relative;overflow:hidden;transition:background .3s}
-.ats-ln.flow{background:var(--green)}.ats-ln.flow::after{content:'';position:absolute;top:-1px;left:-60%;width:60%;height:5px;background:linear-gradient(90deg,transparent,rgba(34,197,94,.55),transparent);animation:atsf 1s linear infinite}
-@keyframes atsf{0%{left:-60%}100%{left:100%}}
-.ats-sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .3s}
-.ats-sw.closed{border-color:var(--green);background:var(--green-bg)}.ats-sw svg{width:14px;height:14px;stroke:var(--dim);fill:none;stroke-width:2;transition:stroke .3s}
-.ats-sw.closed svg{stroke:var(--green)}
-@media(max-width:480px){.ats-wrap{padding:8px 4px}.ats-ic{width:32px;height:32px}.ats-ln{min-width:14px;max-width:36px}}
+
 </style>
 </head>
 <body>
@@ -351,7 +336,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="hdr-right">
   <button class="hdr-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">&#9790;</button>
   <button class="hdr-btn" id="lockBtn" onclick="openPinModal()" title="PIN lock">&#128275;</button>
-  <button class="hdr-btn" id="audioBtn" onclick="toggleAudioAlarm()" title="Alarm audio">&#128276;</button>
   <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">&deg;C</button>
   <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
@@ -437,24 +421,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 </div>
 
 <!-- ATS Power Flow -->
-<div class="row r-full">
- <div class="card">
-  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg><h2>Transfer Switch</h2></div>
-  <div class="card-body">
-   <div class="ats-wrap" id="atsWrap">
-    <div class="ats-src">
-     <div class="ats-nd"><div class="ats-ic" id="atsMains"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><span class="ats-lb" id="atsML">Mains</span></div>
-     <div class="ats-nd"><div class="ats-ic" id="atsGen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7.07-3.07l4.24-4.24m5.66-5.66l4.24-4.24M1 12h6m6 0h6m-3.07 7.07l-4.24-4.24m-5.66-5.66L4.93 4.93"/></svg></div><span class="ats-lb" id="atsGL">Gen</span></div>
-    </div>
-    <div class="ats-ln" id="atsSL"></div>
-    <div class="ats-nd"><div class="ats-sw" id="atsSW"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></div><span class="ats-lb" id="atsSWL">ATS</span></div>
-    <div class="ats-ln" id="atsLL"></div>
-    <div class="ats-nd"><div class="ats-ic" id="atsLoad"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span class="ats-lb" id="atsLoadL">Load</span></div>
-   </div>
-  </div>
- </div>
-</div>
-
 <!-- I/O -->
 <div class="row r-full">
  <div class="card">
@@ -893,10 +859,7 @@ function update(d){
   if(!RELAYS.length)initRelays(d.relays);
   updateRelays(d.relays);
  }
- // ATS power flow
- updateATS(d);
- // Browser audio alarm on shutdown
- if(sdCount>0||b.estop===true){startAlarmAudio();}else{stopAlarmAudio();}
+
 }
 
 /* ── Polling ── */
@@ -1176,18 +1139,7 @@ function pinOk(){var v=getPinVal();if(v.length!==4){document.getElementById('pin
 function pinClearAction(){document.getElementById('pinTitle').textContent='Remove PIN';document.getElementById('pinSub').textContent='Enter current PIN to confirm';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Remove';pinAction='remove';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pin0').focus();}
 updateLockBtn();
 
-/* ── Audio Alarm ── */
-var audioCtx=null,alarmOsc=null,alarmLfo=null,audioMuted=localStorage.getItem('alarmMute')==='1';
-try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
-document.addEventListener('click',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();});
-function startAlarmAudio(){if(audioMuted||alarmOsc||!audioCtx)return;try{alarmOsc=audioCtx.createOscillator();var g=audioCtx.createGain();alarmOsc.type='square';alarmOsc.frequency.value=800;g.gain.value=0.12;alarmOsc.connect(g);g.connect(audioCtx.destination);alarmLfo=audioCtx.createOscillator();var lg=audioCtx.createGain();alarmLfo.frequency.value=2;lg.gain.value=200;alarmLfo.connect(lg);lg.connect(alarmOsc.frequency);alarmOsc.start();alarmLfo.start();}catch(e){}}
-function stopAlarmAudio(){try{if(alarmOsc){alarmOsc.stop();alarmOsc=null;}if(alarmLfo){alarmLfo.stop();alarmLfo=null;}}catch(e){alarmOsc=null;alarmLfo=null;}}
-function toggleAudioAlarm(){audioMuted=!audioMuted;localStorage.setItem('alarmMute',audioMuted?'1':'0');updateAudioBtn();if(audioMuted){stopAlarmAudio();fetch('/api/buzzer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'silence'})}).catch(function(){});}}
-function updateAudioBtn(){var b=document.getElementById('audioBtn');if(b)b.innerHTML=audioMuted?'&#128277;':'&#128276;';}
-updateAudioBtn();
 
-/* ── ATS Power Flow ── */
-function updateATS(d){var b=d.binary||{},s=d.sensors||{};var mOk=d.mains_ok!==false,gOn=b.on_load===true,eRun=s.rpm!=null&&s.rpm>100,lOk=gOn||mOk;var e;e=document.getElementById('atsMains');if(e)e.className='ats-ic'+(mOk?' on':' fail');e=document.getElementById('atsGen');if(e)e.className='ats-ic'+(eRun?' on':'');e=document.getElementById('atsSW');if(e)e.className='ats-sw'+(gOn?' closed':'');e=document.getElementById('atsSL');if(e)e.className='ats-ln'+((gOn&&eRun)||(!gOn&&mOk)?' flow':'');e=document.getElementById('atsLL');if(e)e.className='ats-ln'+(lOk?' flow':'');e=document.getElementById('atsLoad');if(e)e.className='ats-ic'+(lOk?' on':'');e=document.getElementById('atsML');if(e){e.textContent=mOk?'Mains OK':'Mains Fail';e.style.color=mOk?'var(--green)':'var(--red)';}e=document.getElementById('atsGL');if(e){e.textContent=eRun?'Gen Run':'Gen Off';e.style.color=eRun?'var(--green)':'var(--dim)';}e=document.getElementById('atsSWL');if(e)e.textContent=gOn?'Xfr Closed':'ATS';e=document.getElementById('atsLoadL');if(e){e.textContent=lOk?'Powered':'No Power';e.style.color=lOk?'var(--green)':'var(--red)';}}
 
 /* ── Init ── */
 initGauges();initPanels();updateTempUnits();poll();setInterval(poll,2500);
