@@ -14,6 +14,10 @@ CONF_AMBIENT_TEMP_NAME = "ambient_temp_name"
 CONF_AMBIENT_HUMIDITY_ID = "ambient_humidity_id"
 CONF_AMBIENT_HUMIDITY_NAME = "ambient_humidity_name"
 CONF_SINGLE_PHASE = "single_phase"
+CONF_TANK_SIZE = "tank_size_liters"
+CONF_BURN_RATE = "burn_rate_lph"
+CONF_LANGUAGE = "language"
+CONF_MAINS_SENSOR_ID = "mains_sensor_id"
 CONF_RELAY_IDS = [f"relay_{i}_id" for i in range(1, 9)]
 CONF_RELAY_NAMES = [f"relay_{i}_name" for i in range(1, 9)]
 
@@ -27,6 +31,8 @@ sensor_ns = cg.esphome_ns.namespace("sensor")
 Sensor = sensor_ns.class_("Sensor")
 switch_ns = cg.esphome_ns.namespace("switch_")
 Switch = switch_ns.class_("Switch")
+binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
+BinarySensor = binary_sensor_ns.class_("BinarySensor")
 
 schema = {
     cv.GenerateID(): cv.declare_id(SmartgenHSC941Web),
@@ -35,6 +41,10 @@ schema = {
     cv.Optional(CONF_CSS_URL, default=""): cv.string,
     cv.Optional(CONF_JS_URL, default=""): cv.string,
     cv.Optional(CONF_SINGLE_PHASE, default=False): cv.boolean,
+    cv.Optional(CONF_TANK_SIZE, default=0): cv.float_,
+    cv.Optional(CONF_BURN_RATE, default=0): cv.float_,
+    cv.Optional(CONF_LANGUAGE, default="en"): cv.string,
+    cv.Optional(CONF_MAINS_SENSOR_ID): cv.use_id(BinarySensor),
     cv.Optional(CONF_AMBIENT_TEMP_ID): cv.use_id(Sensor),
     cv.Optional(CONF_AMBIENT_TEMP_NAME, default="Ambient Temp"): cv.string,
     cv.Optional(CONF_AMBIENT_HUMIDITY_ID): cv.use_id(Sensor),
@@ -67,6 +77,17 @@ async def to_code(config):
 
     if config[CONF_SINGLE_PHASE]:
         cg.add(var.set_single_phase(True))
+
+    if config[CONF_TANK_SIZE] > 0:
+        cg.add(var.set_tank_size(config[CONF_TANK_SIZE]))
+    if config[CONF_BURN_RATE] > 0:
+        cg.add(var.set_burn_rate(config[CONF_BURN_RATE]))
+    if config[CONF_LANGUAGE] != "en":
+        cg.add(var.set_language(config[CONF_LANGUAGE]))
+
+    if CONF_MAINS_SENSOR_ID in config:
+        mains = await cg.get_variable(config[CONF_MAINS_SENSOR_ID])
+        cg.add(var.set_mains_sensor(mains))
 
     if CONF_AMBIENT_TEMP_ID in config:
         sens = await cg.get_variable(config[CONF_AMBIENT_TEMP_ID])

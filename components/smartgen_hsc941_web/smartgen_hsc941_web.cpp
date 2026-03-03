@@ -18,6 +18,10 @@ const char SmartgenHSC941Web::DASHBOARD_HTML[] = R"rawliteral(<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0c0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="/manifest.json">
 <title>HSC941 Genset Controller</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -203,6 +207,38 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .evtlog-clear{font-size:.65rem;padding:4px 12px;background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:4px;cursor:pointer;transition:all .2s}
 .evtlog-clear:hover{border-color:var(--accent);color:var(--accent)}
 
+/* ── Sparkline ── */
+.sparkline{width:100%;height:32px;display:block;margin-top:4px}
+.spark-line{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.spark-area{opacity:.15}
+
+/* ── Battery trend ── */
+.batt-trend{display:flex;gap:16px;align-items:center;margin-top:6px;padding:6px 0}
+.batt-trend-item{font-size:.68rem;color:var(--dim)}
+.batt-trend-item span{font-weight:700;color:var(--text)}
+
+/* ── Maintenance ── */
+.maint-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--surface);border-radius:8px;margin-bottom:6px;border:1px solid var(--border)}
+.maint-item.maint-due{border-color:var(--orange);background:#f59e0b08}
+.maint-item.maint-overdue{border-color:var(--red);background:#ef444408}
+.maint-name{font-weight:600;font-size:.82rem}
+.maint-info{font-size:.72rem;color:var(--dim)}
+.maint-remaining{font-weight:700;font-size:.82rem}
+.maint-remaining.due{color:var(--orange)}
+.maint-remaining.overdue{color:var(--red)}
+.maint-remaining.ok{color:var(--green)}
+.maint-fields{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+@media(max-width:600px){.maint-fields{grid-template-columns:1fr}}
+.maint-btns{display:flex;gap:8px;margin-top:10px;justify-content:flex-end}
+
+/* ── Fuel Estimator ── */
+.fuel-bar-outer{height:20px;background:var(--surface);border-radius:10px;overflow:hidden;border:1px solid var(--border);position:relative}
+.fuel-bar-inner{height:100%;border-radius:10px;transition:width .5s}
+.fuel-bar-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700}
+.fuel-stats{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap}
+.fuel-stat{font-size:.72rem;color:var(--dim)}
+.fuel-stat span{font-weight:700;color:var(--text)}
+
 /* ── Scrollbar ── */
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--faint);border-radius:3px}
 
@@ -287,6 +323,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="env-bar" id="envBar">
   <div class="env-item" id="ambItem" style="display:none"><span id="lblAmb">Ambient Temp</span>&nbsp;<span class="env-val" id="v_amb">--</span><span class="env-unit tunit">&#176;C</span></div>
   <div class="env-item" id="humItem" style="display:none"><span id="lblHum">Humidity</span>&nbsp;<span class="env-val" id="v_hum">--</span><span class="env-unit">%</span></div>
+  <div class="env-item" id="mainsItem" style="display:none"><span>Mains</span>&nbsp;<span class="env-val" id="v_mains" style="color:var(--green)">OK</span></div>
  </div>
 </nav>
 
@@ -298,7 +335,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="card"><div class="card-body gauge-wrap" id="gVolt"></div></div>
  <div class="card"><div class="card-body gauge-wrap" id="gFreq"></div></div>
  <div class="card"><div class="card-body gauge-wrap" id="gRPM"></div></div>
- <div class="card"><div class="card-body gauge-wrap" id="gLoad"></div></div>
+ <div class="card"><div class="card-body gauge-wrap" id="gLoad"><div id="loadSparkWrap"></div></div></div>
 </div>
 
 <!-- 3-Phase Electrical + Engine -->
@@ -335,6 +372,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
     <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
    </table>
+   <div class="batt-trend" id="battTrend" style="display:none">
+    <span class="batt-trend-item">24h Min: <span id="battMin">--</span>V</span>
+    <span class="batt-trend-item">Avg: <span id="battAvg">--</span>V</span>
+    <span class="batt-trend-item">Max: <span id="battMax">--</span>V</span>
+   </div>
   </div>
  </div>
 </div>
@@ -359,6 +401,21 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="card">
   <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="18" rx="2"/><path d="M8 7h8m-8 4h8m-8 4h5"/></svg><h2>Inputs / Outputs</h2></div>
   <div class="card-body"><div class="io-grid" id="ioPanel"></div></div>
+ </div>
+</div>
+<!-- Fuel Estimate -->
+<div class="row r-full" id="fuelSection" style="display:none">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V5a2 2 0 012-2h6a2 2 0 012 2v17"/><path d="M13 10h4a2 2 0 012 2v10"/></svg><h2>Fuel Estimate</h2></div>
+  <div class="card-body">
+   <div class="fuel-bar-outer"><div class="fuel-bar-inner" id="fuelBar"></div><div class="fuel-bar-text" id="fuelPct">--</div></div>
+   <div class="fuel-stats">
+    <div class="fuel-stat">Remaining: <span id="fuelRemain">--</span> L</div>
+    <div class="fuel-stat">Est. Runtime: <span id="fuelRuntime">--</span> h</div>
+    <div class="fuel-stat">Tank: <span id="fuelTank">--</span> L</div>
+    <button class="evtlog-clear" style="margin-left:auto" onclick="fillTank()">Mark Filled</button>
+   </div>
+  </div>
  </div>
 </div>
 </div><!-- /sec-monitor -->
@@ -436,6 +493,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="ex-status" id="exStatus">
      <span class="ex-st-label">Status:</span><span class="ex-st-value" id="exState">Idle</span>
      <span class="ex-st-label" style="margin-left:16px">Last Run:</span><span class="ex-st-value" id="exLastRun">Never</span>
+     <span class="ex-st-label" style="margin-left:16px" id="exNextLabel">Next:</span><span class="ex-st-value" id="exNext">--</span>
     </div>
    </div>
   </div>
@@ -452,6 +510,13 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <button class="ex-btn ex-btn-save" onclick="saveThermostat()">Save</button>
    </div>
   </div>
+ </div>
+</div>
+<!-- Maintenance Tracker -->
+<div class="row r-full" id="maintSection" style="display:none">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg><h2>Maintenance Tracker</h2></div>
+  <div class="card-body"><div id="maintList"></div></div>
  </div>
 </div>
 </div><!-- /sec-config -->
@@ -472,6 +537,13 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
  </div>
 </div>
+<!-- Runtime History -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><h2>Runtime History</h2></div>
+  <div class="card-body"><svg id="runtimeChart" width="100%" height="140" style="display:block"></svg></div>
+ </div>
+</div>
 <!-- Event Log -->
 <div class="row r-full">
  <div class="card">
@@ -479,7 +551,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="card-body">
    <div class="evtlog-bar">
     <span class="evtlog-count" id="evtCount"></span>
-    <button class="evtlog-clear" onclick="clearEventLog()">Clear Log</button>
+    <div style="display:flex;gap:8px">
+     <button class="evtlog-clear" onclick="exportCSV()">Export CSV</button>
+     <button class="evtlog-clear" onclick="clearEventLog()">Clear Log</button>
+    </div>
    </div>
    <div id="evtlogWrap" class="evtlog-wrap">
     <div class="evtlog-empty" id="evtEmpty">No events recorded</div>
@@ -635,6 +710,9 @@ function update(d){
  eng.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
  // Water temp with unit conversion
  {const e=document.getElementById('v_wt');if(e)e.textContent=tempVal(s.water_temp,1);}
+ pushSpark(s.load_pct);renderSparkline();pushBatt(s.batt_v);
+ if(d.mains_ok!=null){const mi=document.getElementById('mainsItem');if(mi)mi.style.display='';const mv=document.getElementById('v_mains');if(mv){mv.textContent=d.mains_ok?'OK':'FAIL';mv.style.color=d.mains_ok?'var(--green)':'var(--red)';}}
+ if(d.language)applyI18n(d.language);
  // Runtime
  let hours=s.total_hours!=null?Math.floor(s.total_hours):0;
  let mins=s.total_min!=null?Math.floor(s.total_min):0;
@@ -815,6 +893,7 @@ function updateExStatus(d){
   document.getElementById('exStopBtn').style.display='none';
  }
  document.getElementById('exLastRun').textContent=d.last_run||'Never';
+ updateExCountdown(d);
 }
 function pollExercise(){
  if(!exLoaded)return;
@@ -973,6 +1052,9 @@ initGauges();initPanels();updateTempUnits();poll();setInterval(poll,2500);
 loadExercise();setInterval(pollExercise,3000);
 loadThermostat();setInterval(pollThermostat,5000);
 loadEventLog();setInterval(loadEventLog,10000);
+loadMaint();setInterval(loadMaint,30000);
+loadFuel();setInterval(loadFuel,15000);
+loadRuntimeHistory();
 
 function toggleAnnFull(){
  const f=document.getElementById('annFull');
@@ -981,6 +1063,101 @@ function toggleAnnFull(){
  t.classList.toggle('open');
  t.querySelector('svg').nextSibling.textContent=f.classList.contains('show')?' Hide indicators':' Show all indicators';
 }
+
+/* ── CSV Export ── */
+function exportCSV(){fetch('/api/eventlog').then(r=>r.json()).then(d=>{
+ if(!d.events||!d.events.length){toast('No events to export','err');return;}
+ let csv='Timestamp,Event\n';d.events.forEach(e=>{csv+='"'+e.time+'","'+e.msg.replace(/"/g,'""')+'"\n';});
+ const b=new Blob([csv],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(b);
+ a.download='genset_events_'+new Date().toISOString().slice(0,10)+'.csv';a.click();URL.revokeObjectURL(a.href);toast('CSV exported','ok');
+}).catch(()=>toast('Export failed','err'));}
+
+/* ── Next Exercise Countdown ── */
+function updateExCountdown(d){
+ const el=document.getElementById('exNext');if(!el)return;
+ if(!d||!d.enabled||d.state!=='idle'){el.textContent='--';return;}
+ const now=new Date();let next=new Date();next.setHours(d.hour,d.minute,0,0);
+ if(d.day<7){let diff=d.day-now.getDay();if(diff<0||(diff===0&&now>=next))diff+=7;next.setDate(now.getDate()+diff);}else{if(now>=next)next.setDate(next.getDate()+1);}
+ const ms=next-now;if(ms<=0){el.textContent='Imminent';return;}
+ const h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);
+ el.textContent=h>=24?Math.floor(h/24)+'d '+(h%24)+'h':h+'h '+m+'m';
+}
+
+/* ── Load History Sparkline ── */
+const sparkBuf=[];
+function pushSpark(v){sparkBuf.push(v!=null?v:0);if(sparkBuf.length>120)sparkBuf.shift();}
+function renderSparkline(){const w=document.getElementById('loadSparkWrap');if(!w||sparkBuf.length<3)return;
+ const W=w.clientWidth||160,H=32,mx=Math.max(...sparkBuf,1);
+ const pts=sparkBuf.map((v,i)=>((i/(sparkBuf.length-1))*W).toFixed(1)+','+(H-v/mx*H).toFixed(1)).join(' ');
+ w.innerHTML='<svg class="sparkline" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><polygon class="spark-area" points="0,'+H+' '+pts+' '+W+','+H+'" fill="var(--green)"/><polyline class="spark-line" points="'+pts+'" stroke="var(--green)"/></svg>';
+}
+
+/* ── Battery Voltage Trend ── */
+let bMin=999,bMax=0,bSum=0,bCnt=0;
+function pushBatt(v){if(v==null||v<=0)return;
+ if(v<bMin)bMin=v;if(v>bMax)bMax=v;bSum+=v;bCnt++;
+ const el=document.getElementById('battTrend');if(el)el.style.display='';
+ const mn=document.getElementById('battMin'),mx=document.getElementById('battMax'),av=document.getElementById('battAvg');
+ if(mn)mn.textContent=bMin.toFixed(1);if(mx)mx.textContent=bMax.toFixed(1);if(av)av.textContent=(bSum/bCnt).toFixed(1);
+}
+
+/* ── Maintenance Tracker ── */
+function loadMaint(){fetch('/api/maintenance').then(r=>r.json()).then(d=>{
+ const s=document.getElementById('maintSection');
+ if(!d.items||!d.items.length){if(s)s.style.display='none';return;}
+ if(s)s.style.display='';renderMaint(d.items,d.total_hours||0);
+}).catch(()=>{});}
+function renderMaint(items,hrs){const el=document.getElementById('maintList');if(!el)return;let h='';
+ items.forEach((m,i)=>{const used=hrs-m.reset;const rem=m.interval-used;
+  const cls=rem<=0?'maint-overdue':rem<m.interval*0.1?'maint-due':'';
+  const rc=rem<=0?'overdue':rem<m.interval*0.1?'due':'ok';
+  h+='<div class="maint-item '+cls+'"><div><div class="maint-name">'+m.name+'</div><div class="maint-info">Every '+m.interval+'h \u2022 '+Math.round(used)+'h since service</div></div>';
+  h+='<div style="text-align:right"><div class="maint-remaining '+rc+'">'+(rem>0?Math.round(rem)+'h left':'OVERDUE '+Math.abs(Math.round(rem))+'h')+'</div>';
+  h+='<button class="evtlog-clear" style="margin-top:4px" onclick="resetMaint('+i+')">Reset</button></div></div>';
+ });el.innerHTML=h;}
+function resetMaint(i){fetch('/api/maintenance',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'reset',index:i})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Service reset':'Failed',d.ok?'ok':'err');loadMaint();}).catch(()=>toast('Error','err'));}
+
+/* ── Fuel Estimator ── */
+function loadFuel(){fetch('/api/fuel').then(r=>r.json()).then(d=>{
+ const s=document.getElementById('fuelSection');
+ if(!d.tank_size){if(s)s.style.display='none';return;}
+ if(s)s.style.display='';renderFuel(d);
+}).catch(()=>{});}
+function renderFuel(d){
+ const pct=Math.max(0,Math.min(100,d.pct||0));
+ const bar=document.getElementById('fuelBar');
+ if(bar){bar.style.width=pct+'%';bar.style.background=pct>25?'var(--green)':pct>10?'var(--orange)':'var(--red)';}
+ const t=document.getElementById('fuelPct');if(t)t.textContent=Math.round(pct)+'%';
+ const r=document.getElementById('fuelRemain');if(r)r.textContent=(d.remain||0).toFixed(1);
+ const rt=document.getElementById('fuelRuntime');if(rt)rt.textContent=(d.est_hours||0).toFixed(1);
+ const tk=document.getElementById('fuelTank');if(tk)tk.textContent=(d.tank_size||0).toFixed(0);
+}
+function fillTank(){fetch('/api/fuel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'fill'})})
+ .then(r=>r.json()).then(d=>{toast(d.ok?'Tank marked filled':'Failed',d.ok?'ok':'err');loadFuel();}).catch(()=>toast('Error','err'));}
+
+/* ── Runtime History Chart ── */
+function loadRuntimeHistory(){fetch('/api/runtime_history').then(r=>r.json()).then(d=>{
+ if(d.days&&d.days.length)renderRuntimeChart(d.days);}).catch(()=>{});}
+function renderRuntimeChart(days){
+ const svg=document.getElementById('runtimeChart');if(!svg||!days.length)return;
+ const W=svg.clientWidth||600,H=140,pt=20,pb=20,pl=35,pr=10;
+ const cW=W-pl-pr,cH=H-pt-pb,maxH=Math.max(...days.map(d=>d.h),0.1);
+ const bw=Math.max(6,Math.floor(cW/days.length*0.65)),step=Math.floor(cW/days.length);
+ let h='';for(let i=0;i<=4;i++){const y=pt+cH*(1-i/4);const v=(maxH*i/4).toFixed(maxH>=10?0:1);
+  h+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="#252a3a"/>';
+  h+='<text x="'+(pl-4)+'" y="'+(y+3)+'" fill="#6b7394" font-size="9" text-anchor="end">'+v+'</text>';}
+ days.forEach((d,i)=>{const x=pl+i*step+(step-bw)/2;const bh=d.h/maxH*cH;const y=pt+cH-bh;
+  h+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(bh,1)+'" fill="var(--blue)" rx="2" opacity=".8"><title>'+d.d+': '+d.h.toFixed(1)+'h</title></rect>';
+  if(days.length<=14||i%Math.ceil(days.length/7)===0)h+='<text x="'+(x+bw/2)+'" y="'+(H-4)+'" fill="#6b7394" font-size="8" text-anchor="middle">'+d.d.slice(5)+'</text>';});
+ svg.innerHTML=h;}
+
+/* ── Multi-language ── */
+const I18N={es:{'Monitoring':'Monitoreo','Configuration':'Configuraci\u00f3n','History':'Historial','Controls':'Controles','Generator Output':'Salida Generador','Engine':'Motor','Alarms':'Alarmas','Inputs / Outputs':'E/S','Fuel Estimate':'Combustible','Exercise Schedule':'Ejercicio','Relay Thermostat':'Termostato','Maintenance Tracker':'Mantenimiento','Runtime &amp; Totals':'Totales','Runtime History':'Historial Ejecuci\u00f3n','Event Log':'Registro','Board Relays':'Rel\u00e9s'},fr:{'Monitoring':'Surveillance','Configuration':'Configuration','History':'Historique','Controls':'Commandes','Generator Output':'Sortie G\u00e9n\u00e9rateur','Engine':'Moteur','Alarms':'Alarmes','Inputs / Outputs':'E/S','Fuel Estimate':'Carburant','Exercise Schedule':'Exercice','Relay Thermostat':'Thermostat','Maintenance Tracker':'Maintenance','Runtime &amp; Totals':'Totaux','Runtime History':'Historique','Event Log':'Journal','Board Relays':'Relais'}};
+let i18nDone=false;
+function applyI18n(lang){if(i18nDone||!lang||lang==='en')return;const t=I18N[lang];if(!t)return;i18nDone=true;
+ document.querySelectorAll('.nav-tab').forEach(e=>{const k=e.textContent.trim();if(t[k])e.textContent=t[k];});
+ document.querySelectorAll('.card-hd h2').forEach(e=>{const k=e.innerHTML.trim();if(t[k])e.innerHTML=t[k];});}
 </script>
 </body>
 </html>)rawliteral";
@@ -995,6 +1172,10 @@ void SmartgenHSC941Web::setup() {
   this->load_event_log_();
   this->load_exercise_config_();
   this->load_thermostat_config_();
+  this->init_maint_defaults_();
+  this->load_maintenance_config_();
+  this->load_fuel_config_();
+  this->load_runtime_history_();
   this->start_server_();
   this->log_event("System booted");
 }
@@ -1020,6 +1201,11 @@ void SmartgenHSC941Web::loop() {
     this->last_alarm_check_ = now;
     this->check_alarm_transitions_();
   }
+  // Check runtime history every 60 seconds
+  if (now - this->last_hist_check_ >= 60000) {
+    this->last_hist_check_ = now;
+    this->check_runtime_history_();
+  }
 }
 
 void SmartgenHSC941Web::dump_config() {
@@ -1037,6 +1223,13 @@ void SmartgenHSC941Web::dump_config() {
                   days[this->exercise_cfg_.day > 7 ? 7 : this->exercise_cfg_.day],
                   this->exercise_cfg_.hour, this->exercise_cfg_.minute,
                   this->exercise_cfg_.duration_min);
+  }
+  if (this->tank_size_liters_ > 0) {
+    ESP_LOGCONFIG(TAG, "  Fuel: %.0fL tank, %.1f L/h burn rate", this->tank_size_liters_, this->burn_rate_lph_);
+  }
+  ESP_LOGCONFIG(TAG, "  Language: %s", this->language_.c_str());
+  if (this->mains_sensor_) {
+    ESP_LOGCONFIG(TAG, "  Mains sensor: configured");
   }
 }
 
@@ -1428,6 +1621,227 @@ void SmartgenHSC941Web::check_alarm_transitions_() {
 }
 
 // ============================================================
+//  Maintenance Tracker — NVS-backed service intervals
+// ============================================================
+static const char *NVS_MAINT_NS = "genset_mt";
+static const char *NVS_MAINT_KEY = "config";
+
+void SmartgenHSC941Web::init_maint_defaults_() {
+  this->maint_items_[0] = {"Oil Change", 250, 0};
+  this->maint_items_[1] = {"Air Filter", 500, 0};
+  this->maint_items_[2] = {"Coolant Service", 1000, 0};
+  this->maint_items_[3] = {"Belt Inspection", 500, 0};
+  this->maint_items_[4] = {"Battery Service", 500, 0};
+}
+
+void SmartgenHSC941Web::load_maintenance_config_() {
+  nvs_handle_t handle;
+  if (nvs_open(NVS_MAINT_NS, NVS_READONLY, &handle) != ESP_OK) return;
+  size_t len = 0;
+  if (nvs_get_str(handle, NVS_MAINT_KEY, nullptr, &len) == ESP_OK && len > 0) {
+    char *buf = new char[len];
+    nvs_get_str(handle, NVS_MAINT_KEY, buf, &len);
+    // Parse: [{"n":"Oil Change","i":250,"r":0.0}, ...]
+    const char *p = buf;
+    uint8_t idx = 0;
+    while (idx < MAX_MAINT_ITEMS) {
+      const char *start = strchr(p, '{');
+      if (!start) break;
+      const char *end = strchr(start, '}');
+      if (!end) break;
+      auto extract_str = [&](const char *key) -> std::string {
+        const char *k = strstr(start, key);
+        if (!k || k >= end) return "";
+        k += strlen(key);
+        const char *q = strchr(k, '"');
+        return (q && q < end) ? std::string(k, q) : "";
+      };
+      auto extract_num = [&](const char *key) -> float {
+        const char *k = strstr(start, key);
+        if (!k || k >= end) return 0;
+        return strtof(k + strlen(key), nullptr);
+      };
+      std::string name = extract_str("\"n\":\"");
+      if (!name.empty()) this->maint_items_[idx].name = name;
+      float iv = extract_num("\"i\":");
+      if (iv > 0) this->maint_items_[idx].interval_hours = (uint16_t)iv;
+      this->maint_items_[idx].last_reset_hours = extract_num("\"r\":");
+      idx++;
+      p = end + 1;
+    }
+    delete[] buf;
+    ESP_LOGI(TAG, "Loaded maintenance config for %u items", idx);
+  }
+  nvs_close(handle);
+}
+
+void SmartgenHSC941Web::save_maintenance_config_() {
+  nvs_handle_t handle;
+  if (nvs_open(NVS_MAINT_NS, NVS_READWRITE, &handle) != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS for maintenance write");
+    return;
+  }
+  std::string json;
+  json.reserve(512);
+  json += '[';
+  for (uint8_t i = 0; i < MAX_MAINT_ITEMS; i++) {
+    if (i > 0) json += ',';
+    const auto &m = this->maint_items_[i];
+    json += "{\"n\":\"";
+    json += m.name;
+    json += "\",\"i\":";
+    json += std::to_string(m.interval_hours);
+    json += ",\"r\":";
+    char fb[16];
+    snprintf(fb, sizeof(fb), "%.1f", m.last_reset_hours);
+    json += fb;
+    json += '}';
+  }
+  json += ']';
+  nvs_set_str(handle, NVS_MAINT_KEY, json.c_str());
+  nvs_commit(handle);
+  nvs_close(handle);
+  ESP_LOGI(TAG, "Saved maintenance config");
+}
+
+// ============================================================
+//  Fuel Estimator — NVS-backed
+// ============================================================
+static const char *NVS_FUEL_NS = "genset_fuel";
+static const char *NVS_FUEL_KEY = "fill_hrs";
+
+void SmartgenHSC941Web::load_fuel_config_() {
+  if (this->tank_size_liters_ <= 0) return;  // Not configured
+  nvs_handle_t handle;
+  if (nvs_open(NVS_FUEL_NS, NVS_READONLY, &handle) != ESP_OK) return;
+  size_t len = 0;
+  if (nvs_get_str(handle, NVS_FUEL_KEY, nullptr, &len) == ESP_OK && len > 0) {
+    char buf[32];
+    nvs_get_str(handle, NVS_FUEL_KEY, buf, &len);
+    this->last_fill_hours_ = strtof(buf, nullptr);
+    ESP_LOGI(TAG, "Fuel: last fill at %.1f hours", this->last_fill_hours_);
+  }
+  nvs_close(handle);
+}
+
+void SmartgenHSC941Web::save_fuel_config_() {
+  nvs_handle_t handle;
+  if (nvs_open(NVS_FUEL_NS, NVS_READWRITE, &handle) != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to open NVS for fuel write");
+    return;
+  }
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%.1f", this->last_fill_hours_);
+  nvs_set_str(handle, NVS_FUEL_KEY, buf);
+  nvs_commit(handle);
+  nvs_close(handle);
+}
+
+// ============================================================
+//  Runtime History — SPIFFS-backed daily totals
+// ============================================================
+static const char *RUNTIME_HIST_PATH = "/eventlog/runtime.dat";
+static const uint8_t MAX_RUNTIME_DAYS = 30;
+
+void SmartgenHSC941Web::load_runtime_history_() {
+  if (!this->spiffs_mounted_) return;
+  FILE *f = fopen(RUNTIME_HIST_PATH, "r");
+  if (!f) return;
+  char line[32];
+  while (fgets(line, sizeof(line), f)) {
+    char *tab = strchr(line, '\t');
+    if (!tab) continue;
+    *tab = '\0';
+    RuntimeDay rd;
+    strncpy(rd.date, line, sizeof(rd.date) - 1);
+    rd.date[sizeof(rd.date) - 1] = '\0';
+    rd.hours = strtof(tab + 1, nullptr);
+    this->runtime_history_.push_back(rd);
+  }
+  fclose(f);
+  // Trim to max
+  while (this->runtime_history_.size() > MAX_RUNTIME_DAYS) {
+    this->runtime_history_.erase(this->runtime_history_.begin());
+  }
+  ESP_LOGI(TAG, "Loaded %u runtime history entries", (unsigned)this->runtime_history_.size());
+}
+
+void SmartgenHSC941Web::save_runtime_day_(const char *date, float hours) {
+  if (!this->spiffs_mounted_) return;
+  // Check if last entry is same date — update it
+  if (!this->runtime_history_.empty()) {
+    auto &last = this->runtime_history_.back();
+    if (strcmp(last.date, date) == 0) {
+      last.hours = hours;
+      // Rewrite entire file
+      FILE *f = fopen(RUNTIME_HIST_PATH, "w");
+      if (f) {
+        for (const auto &rd : this->runtime_history_) {
+          fprintf(f, "%s\t%.2f\n", rd.date, rd.hours);
+        }
+        fclose(f);
+      }
+      return;
+    }
+  }
+  // New day
+  RuntimeDay rd;
+  strncpy(rd.date, date, sizeof(rd.date) - 1);
+  rd.date[sizeof(rd.date) - 1] = '\0';
+  rd.hours = hours;
+  this->runtime_history_.push_back(rd);
+  while (this->runtime_history_.size() > MAX_RUNTIME_DAYS) {
+    this->runtime_history_.erase(this->runtime_history_.begin());
+  }
+  // Rewrite file
+  FILE *f = fopen(RUNTIME_HIST_PATH, "w");
+  if (f) {
+    for (const auto &entry : this->runtime_history_) {
+      fprintf(f, "%s\t%.2f\n", entry.date, entry.hours);
+    }
+    fclose(f);
+  }
+}
+
+void SmartgenHSC941Web::check_runtime_history_() {
+  if (!this->controller_ || !this->controller_->is_connected()) return;
+  auto *hrs_sensor = this->controller_->get_total_hours_sensor();
+  if (!hrs_sensor || !hrs_sensor->has_state()) return;
+  float total_hrs = hrs_sensor->state;
+
+  time_t now_t = time(nullptr);
+  if (now_t < 1704067200) return;  // Time not synced
+  struct tm *tm = localtime(&now_t);
+  if (!tm) return;
+
+  uint8_t today = tm->tm_mday;
+  char date_str[11];
+  strftime(date_str, sizeof(date_str), "%Y-%m-%d", tm);
+
+  if (this->prev_hist_day_ == 255) {
+    // First check after boot — just record baseline
+    this->prev_total_hours_ = total_hrs;
+    this->prev_hist_day_ = today;
+    return;
+  }
+
+  // Compute today's runtime delta
+  float delta = total_hrs - this->prev_total_hours_;
+  if (delta < 0) delta = 0;
+
+  // Save/update today's entry
+  if (delta > 0.01f || today != this->prev_hist_day_) {
+    this->save_runtime_day_(date_str, delta);
+  }
+
+  if (today != this->prev_hist_day_) {
+    // New day — reset baseline
+    this->prev_total_hours_ = total_hrs;
+    this->prev_hist_day_ = today;
+  }
+}
+
+// ============================================================
 //  Exercise scheduler logic
 // ============================================================
 
@@ -1696,7 +2110,7 @@ void SmartgenHSC941Web::start_server_() {
   config.server_port = this->port_;
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
-  config.max_uri_handlers = 11;
+  config.max_uri_handlers = 18;
   config.max_open_sockets = 4;
   config.lru_purge_enable = true;
 
@@ -1788,6 +2202,58 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &eventlog_post_uri);
+
+  // Manifest (PWA)
+  httpd_uri_t manifest_uri = {
+      .uri = "/manifest.json",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_manifest_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &manifest_uri);
+
+  // Maintenance
+  httpd_uri_t maint_get_uri = {
+      .uri = "/api/maintenance",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_maintenance_get_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &maint_get_uri);
+
+  httpd_uri_t maint_post_uri = {
+      .uri = "/api/maintenance",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_maintenance_post_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &maint_post_uri);
+
+  // Fuel
+  httpd_uri_t fuel_get_uri = {
+      .uri = "/api/fuel",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_fuel_get_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &fuel_get_uri);
+
+  httpd_uri_t fuel_post_uri = {
+      .uri = "/api/fuel",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_fuel_post_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &fuel_post_uri);
+
+  // Runtime History
+  httpd_uri_t runtime_hist_uri = {
+      .uri = "/api/runtime_history",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_runtime_history_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &runtime_hist_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -1889,6 +2355,22 @@ esp_err_t SmartgenHSC941Web::handle_api_status_(httpd_req_t *req) {
       }
       json += "]}";
     }
+  }
+
+  // Append language
+  if (self->language_ != "en") {
+    if (!json.empty() && json.back() == '}') json.pop_back();
+    json += ",\"language\":\"";
+    json += self->language_;
+    json += "\"}";
+  }
+
+  // Append mains sensor state
+  if (self->mains_sensor_ != nullptr) {
+    if (!json.empty() && json.back() == '}') json.pop_back();
+    json += ",\"mains_ok\":";
+    json += self->mains_sensor_->state ? "true" : "false";
+    json += '}';
   }
 
   httpd_resp_set_type(req, "application/json");
@@ -2389,6 +2871,220 @@ esp_err_t SmartgenHSC941Web::handle_api_eventlog_post_(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *r = R"({"ok":true})";
   return httpd_resp_send(req, r, strlen(r));
+}
+
+// ============================================================
+//  PWA Manifest handler
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_manifest_(httpd_req_t *req) {
+  static const char MANIFEST[] = R"({"name":"HSC941 Genset Controller","short_name":"Genset","display":"standalone","background_color":"#0c0e14","theme_color":"#0c0e14","start_url":"/","icons":[]})";
+  httpd_resp_set_type(req, "application/json");
+  return httpd_resp_send(req, MANIFEST, strlen(MANIFEST));
+}
+
+// ============================================================
+//  Maintenance API handlers
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_api_maintenance_get_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  float total_hrs = 0;
+  if (self->controller_) {
+    auto *s = self->controller_->get_total_hours_sensor();
+    if (s && s->has_state()) total_hrs = s->state;
+  }
+
+  std::string json;
+  json.reserve(512);
+  char fb[16];
+  snprintf(fb, sizeof(fb), "%.1f", total_hrs);
+  json += "{\"total_hours\":";
+  json += fb;
+  json += ",\"items\":[";
+  const auto &items = self->get_maint_items();
+  for (uint8_t i = 0; i < MAX_MAINT_ITEMS; i++) {
+    if (i > 0) json += ',';
+    json += "{\"name\":\"";
+    json += items[i].name;
+    json += "\",\"interval\":";
+    json += std::to_string(items[i].interval_hours);
+    json += ",\"reset\":";
+    snprintf(fb, sizeof(fb), "%.1f", items[i].last_reset_hours);
+    json += fb;
+    json += '}';
+  }
+  json += "]}";
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json.c_str(), json.size());
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_maintenance_post_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 256) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
+    return ESP_FAIL;
+  }
+  char body[257];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  // Parse {"action":"reset","index":N}
+  if (strstr(body, "\"reset\"")) {
+    const char *idx_p = strstr(body, "\"index\":");
+    if (idx_p) {
+      int idx = atoi(idx_p + 8);
+      if (idx >= 0 && idx < MAX_MAINT_ITEMS) {
+        float total_hrs = 0;
+        if (self->controller_) {
+          auto *s = self->controller_->get_total_hours_sensor();
+          if (s && s->has_state()) total_hrs = s->state;
+        }
+        self->maint_items_[idx].last_reset_hours = total_hrs;
+        self->save_maintenance_config_();
+        char msg[64];
+        snprintf(msg, sizeof(msg), "Maintenance reset: %s at %.0fh",
+                 self->maint_items_[idx].name.c_str(), total_hrs);
+        self->log_event(msg);
+      }
+    }
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *r = R"({"ok":true})";
+  return httpd_resp_send(req, r, strlen(r));
+}
+
+// ============================================================
+//  Fuel API handlers
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_api_fuel_get_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  float tank = self->get_tank_size();
+  float rate = self->get_burn_rate();
+  if (tank <= 0 || rate <= 0) {
+    const char *r = R"({"tank_size":0})";
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, r, strlen(r));
+  }
+
+  float total_hrs = 0;
+  if (self->controller_) {
+    auto *s = self->controller_->get_total_hours_sensor();
+    if (s && s->has_state()) total_hrs = s->state;
+  }
+
+  float consumed = (total_hrs - self->get_last_fill_hours()) * rate;
+  if (consumed < 0) consumed = 0;
+  float remain = tank - consumed;
+  if (remain < 0) remain = 0;
+  float pct = (remain / tank) * 100.0f;
+  float est_hours = (rate > 0) ? remain / rate : 0;
+
+  char json[256];
+  snprintf(json, sizeof(json),
+    "{\"tank_size\":%.1f,\"burn_rate\":%.2f,\"pct\":%.1f,\"remain\":%.1f,\"est_hours\":%.1f,\"consumed\":%.1f}",
+    tank, rate, pct, remain, est_hours, consumed);
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json, strlen(json));
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_fuel_post_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 256) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid request body");
+    return ESP_FAIL;
+  }
+  char body[257];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Failed to read body");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  if (strstr(body, "\"fill\"")) {
+    float total_hrs = 0;
+    if (self->controller_) {
+      auto *s = self->controller_->get_total_hours_sensor();
+      if (s && s->has_state()) total_hrs = s->state;
+    }
+    self->last_fill_hours_ = total_hrs;
+    self->save_fuel_config_();
+    self->log_event("Fuel tank marked as filled");
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *r = R"({"ok":true})";
+  return httpd_resp_send(req, r, strlen(r));
+}
+
+// ============================================================
+//  Runtime History API handler
+// ============================================================
+
+esp_err_t SmartgenHSC941Web::handle_api_runtime_history_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  const auto &hist = self->get_runtime_history();
+  std::string json;
+  json.reserve(512);
+  json += "{\"days\":[";
+  for (size_t i = 0; i < hist.size(); i++) {
+    if (i > 0) json += ',';
+    char fb[16];
+    snprintf(fb, sizeof(fb), "%.2f", hist[i].hours);
+    json += "{\"d\":\"";
+    json += hist[i].date;
+    json += "\",\"h\":";
+    json += fb;
+    json += '}';
+  }
+  json += "]}";
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json.c_str(), json.size());
 }
 
 }  // namespace smartgen_hsc941_web
