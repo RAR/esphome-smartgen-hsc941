@@ -322,6 +322,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
     <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
     <tr id="ambRow" style="display:none"><td class="dlbl">Ambient Temp</td><td class="dval"><span id="v_amb">--</span><span class="dunit">&#176;C</span></td></tr>
+    <tr id="humRow" style="display:none"><td class="dlbl">Humidity</td><td class="dval"><span id="v_hum">--</span><span class="dunit">%</span></td></tr>
    </table>
   </div>
  </div>
@@ -668,6 +669,11 @@ function update(d){
  if(d.ambient_temp!=null){
   const ar=document.getElementById('ambRow');if(ar)ar.style.display='';
   const ae=document.getElementById('v_amb');if(ae)ae.textContent=f(d.ambient_temp,1);
+ }
+ // Ambient humidity
+ if(d.ambient_humidity!=null){
+  const hr=document.getElementById('humRow');if(hr)hr.style.display='';
+  const he=document.getElementById('v_hum');if(he)he.textContent=f(d.ambient_humidity,1);
  }
  // Relays
  if(d.relays){
@@ -1793,6 +1799,20 @@ esp_err_t SmartgenHSC941Web::handle_api_status_(httpd_req_t *req) {
     if (self->ambient_temp_->has_state()) {
       char buf[16];
       snprintf(buf, sizeof(buf), "%.1f", self->ambient_temp_->state);
+      json += buf;
+    } else {
+      json += "null";
+    }
+    json += '}';
+  }
+
+  // Append ambient humidity if configured
+  if (self->ambient_humidity_ != nullptr) {
+    if (!json.empty() && json.back() == '}') json.pop_back();
+    json += ",\"ambient_humidity\":";
+    if (self->ambient_humidity_->has_state()) {
+      char buf[16];
+      snprintf(buf, sizeof(buf), "%.1f", self->ambient_humidity_->state);
       json += buf;
     } else {
       json += "null";

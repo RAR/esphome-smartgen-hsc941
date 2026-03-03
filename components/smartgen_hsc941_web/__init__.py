@@ -10,6 +10,7 @@ CONF_SMARTGEN_ID = "smartgen_hsc941_id"
 CONF_CSS_URL = "css_url"
 CONF_JS_URL = "js_url"
 CONF_AMBIENT_TEMP_ID = "ambient_temp_id"
+CONF_AMBIENT_HUMIDITY_ID = "ambient_humidity_id"
 CONF_SINGLE_PHASE = "single_phase"
 CONF_RELAY_IDS = [f"relay_{i}_id" for i in range(1, 9)]
 CONF_RELAY_NAMES = [f"relay_{i}_name" for i in range(1, 9)]
@@ -33,6 +34,7 @@ schema = {
     cv.Optional(CONF_JS_URL, default=""): cv.string,
     cv.Optional(CONF_SINGLE_PHASE, default=False): cv.boolean,
     cv.Optional(CONF_AMBIENT_TEMP_ID): cv.use_id(Sensor),
+    cv.Optional(CONF_AMBIENT_HUMIDITY_ID): cv.use_id(Sensor),
 }
 
 # Add relay_1_id .. relay_8_id and relay_1_name .. relay_8_name
@@ -65,6 +67,10 @@ async def to_code(config):
     if CONF_AMBIENT_TEMP_ID in config:
         sens = await cg.get_variable(config[CONF_AMBIENT_TEMP_ID])
         cg.add(var.set_ambient_temp_sensor(sens))
+
+    if CONF_AMBIENT_HUMIDITY_ID in config:
+        hum = await cg.get_variable(config[CONF_AMBIENT_HUMIDITY_ID])
+        cg.add(var.set_ambient_humidity_sensor(hum))
 
     for i in range(8):
         if CONF_RELAY_IDS[i] in config:

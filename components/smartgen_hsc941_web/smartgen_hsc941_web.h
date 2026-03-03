@@ -68,6 +68,7 @@ class SmartgenHSC941Web : public Component {
   void set_css_url(const std::string &url) { this->css_url_ = url; }
   void set_js_url(const std::string &url) { this->js_url_ = url; }
   void set_ambient_temp_sensor(sensor::Sensor *s) { this->ambient_temp_ = s; }
+  void set_ambient_humidity_sensor(sensor::Sensor *s) { this->ambient_humidity_ = s; }
   void set_single_phase(bool v) { this->single_phase_ = v; }
   void set_relay(uint8_t index, switch_::Switch *sw, const std::string &name) {
     if (index < MAX_RELAYS) {
@@ -98,6 +99,7 @@ class SmartgenHSC941Web : public Component {
 
   // Accessors for ambient temp and relays (used by handlers)
   sensor::Sensor *get_ambient_temp() { return this->ambient_temp_; }
+  sensor::Sensor *get_ambient_humidity() { return this->ambient_humidity_; }
   const std::array<RelayInfo, MAX_RELAYS> &get_relays() const { return this->relays_; }
 
   // Exercise accessors (used by handlers)
@@ -122,6 +124,7 @@ class SmartgenHSC941Web : public Component {
   std::string css_url_;
   std::string js_url_;
   sensor::Sensor *ambient_temp_{nullptr};
+  sensor::Sensor *ambient_humidity_{nullptr};
   bool single_phase_{false};
   std::array<RelayInfo, MAX_RELAYS> relays_{};
 
