@@ -209,7 +209,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .th-relay{background:var(--surface);border-radius:8px;padding:12px;margin-bottom:10px;border:1px solid var(--border)}
 .th-relay.th-active{border-color:var(--blue)}
 .th-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.th-name{font-weight:700;font-size:.85rem}
+.th-name{font-weight:700;font-size:.85rem;display:flex;align-items:center;gap:10px}
 .th-reading{font-size:.78rem;padding:3px 8px;border-radius:4px;background:var(--card)}
 .th-reading.th-on{color:var(--green);font-weight:700}
 .th-reading.th-off{color:var(--dim)}
@@ -770,7 +770,7 @@ function renderThermostat(){
   const rdTxt=r.reading!=null?r.reading.toFixed(1)+'°':'--';
   const relSt=r.relay_on?'ON':'OFF';
   h+='<div class="th-relay '+active+'" data-idx="'+r.idx+'">';
-  h+='<div class="th-hdr"><span class="th-name"><label class="toggle" style="margin-right:8px"><input type="checkbox" class="th-en" data-idx="'+r.idx+'"'+(r.enabled?' checked':'')+' onchange="thToggle(this)"><span class="slider"></span></label>'+r.name+'</span>';
+  h+='<div class="th-hdr"><span class="th-name"><label class="toggle"><input type="checkbox" class="th-en" data-idx="'+r.idx+'"'+(r.enabled?' checked':'')+' onchange="thToggle(this)"><span class="slider"></span></label><span>'+r.name+'</span></span>';
   h+='<span class="th-reading '+rdCls+'">'+rdTxt+' ('+relSt+')</span></div>';
   h+='<div class="th-fields">';
   h+='<div class="th-field"><label>Sensor</label><select class="th-sensor" data-idx="'+r.idx+'">';
