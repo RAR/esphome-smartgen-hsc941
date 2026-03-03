@@ -335,7 +335,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  </div>
  <div class="hdr-right">
   <button class="hdr-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">&#9790;</button>
-  <button class="hdr-btn" id="lockBtn" onclick="openPinModal()" title="PIN lock">&#128275;</button>
+  <button class="hdr-btn" id="lockBtn" onclick="openPinModal()" title="PIN lock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></button>
   <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">&deg;C</button>
   <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
@@ -1127,7 +1127,7 @@ function clearEventLog(){
 /* ── PIN Lock ── */
 var pinCode=typeof cfgPin!=='undefined'?cfgPin:'',pinEnabled=pinCode.length===4,pinVerified=false,pendingCmdAfterPin=null;
 function requirePin(cb){if(!pinEnabled||pinVerified)return false;pendingCmdAfterPin=cb;document.getElementById('pinTitle').textContent='Enter PIN';document.getElementById('pinSub').textContent='PIN required for this action';document.getElementById('pinOkBtn').textContent='Unlock';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);return true;}
-function updateLockBtn(){var b=document.getElementById('lockBtn');if(!b)return;if(!pinEnabled){b.style.display='none';return;}b.innerHTML=pinVerified?'&#128275;':'&#128274;';b.title=pinVerified?'Controls unlocked (click to re-lock)':'PIN lock active';}
+function updateLockBtn(){var b=document.getElementById('lockBtn');if(!b)return;if(!pinEnabled){b.style.display='none';return;}b.innerHTML=pinVerified?'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0119 0"/></svg>':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>';b.title=pinVerified?'Controls unlocked (click to re-lock)':'PIN lock active';}
 function openPinModal(){if(!pinEnabled)return;if(pinVerified){pinVerified=false;updateLockBtn();toast('Controls locked','ok');return;}document.getElementById('pinTitle').textContent='Unlock';document.getElementById('pinSub').textContent='Enter PIN to unlock controls';document.getElementById('pinOkBtn').textContent='Unlock';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);}
 function closePinModal(){document.getElementById('pinOverlay').classList.remove('show');}
 function clearPinInputs(){for(var i=0;i<4;i++)document.getElementById('pin'+i).value='';}
