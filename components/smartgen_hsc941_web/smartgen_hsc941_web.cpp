@@ -4,6 +4,7 @@
 #include <cstring>
 #include <ctime>
 #include <sys/stat.h>
+#include <driver/ledc.h>
 
 namespace esphome {
 namespace smartgen_hsc941_web {
@@ -300,8 +301,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .th-field select:focus,.th-field input[type=number]:focus{border-color:var(--blue)}
 .th-field select option{background:var(--card);color:var(--text)}
 /* ── Light Theme ── */
-[data-theme="light"]{--bg:#f0f2f5;--surface:#fff;--card:#fff;--border:#dfe2e8;--text:#1a1d26;--dim:#6b7280;--faint:#d1d5db;--gauge-track:#e5e7eb}
-[data-theme="light"] .hdr,[data-theme="light"] .nav{background:#fff;border-color:#dfe2e8}
+[data-theme="light"]{--bg:#f0f2f5;--surface:#f8f9fb;--card:#fff;--border:#d0d5dd;--text:#111827;--dim:#4b5563;--faint:#9ca3af;--gauge-track:#c0c7d0;--red-bg:#fef2f2;--orange-bg:#fffbeb;--green-bg:#f0fdf4;--blue-bg:#eff6ff}
+[data-theme="light"] .hdr,[data-theme="light"] .nav{background:#fff;border-color:#d0d5dd}
+[data-theme="light"] .card{box-shadow:0 1px 3px rgba(0,0,0,.1)}
+[data-theme="light"] .ex-field select,[data-theme="light"] .ex-field input,[data-theme="light"] .th-field select,[data-theme="light"] .th-field input{background:#f3f4f6}
+[data-theme="light"] .relay-item{background:#f8f9fb}
 [data-theme="light"] ::-webkit-scrollbar-thumb{background:#c0c4cc}
 /* ── Header Icon Buttons ── */
 .hdr-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);cursor:pointer;font-size:.85rem;padding:3px 7px;line-height:1;transition:all .15s}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
@@ -1159,7 +1163,7 @@ function clearEventLog(){
 }
 
 /* ── PIN Lock ── */
-var pinCode=localStorage.getItem('dashPin')||'',pinEnabled=pinCode.length===4,pinVerified=false,pendingCmdAfterPin=null,pinAction='';
+var storedPin=localStorage.getItem('dashPin'),cfgPinDef=typeof cfgPin!=='undefined'?cfgPin:'',pinCode=storedPin!==null?storedPin:cfgPinDef,pinEnabled=pinCode.length===4,pinVerified=false,pendingCmdAfterPin=null,pinAction='';
 function requirePin(cb){if(!pinEnabled||pinVerified)return false;pendingCmdAfterPin=cb;document.getElementById('pinTitle').textContent='Enter PIN';document.getElementById('pinSub').textContent='PIN required for this action';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Unlock';pinAction='verify';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);return true;}
 function updateLockBtn(){var b=document.getElementById('lockBtn');if(!b)return;b.innerHTML=pinEnabled?'&#128274;':'&#128275;';b.title=pinEnabled?(pinVerified?'PIN active (unlocked)':'PIN lock active'):'Set PIN lock';}
 function openPinModal(){if(!pinEnabled){document.getElementById('pinTitle').textContent='Set PIN';document.getElementById('pinSub').textContent='Create a 4-digit PIN to lock controls';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Set';pinAction='set';}else if(pinVerified){document.getElementById('pinTitle').textContent='PIN Settings';document.getElementById('pinSub').textContent='Change or remove your PIN';document.getElementById('pinClearBtn').style.display='';document.getElementById('pinOkBtn').textContent='Change';pinAction='change';}else{document.getElementById('pinTitle').textContent='Unlock';document.getElementById('pinSub').textContent='Enter PIN to unlock controls';document.getElementById('pinClearBtn').style.display='';document.getElementById('pinOkBtn').textContent='Unlock';pinAction='verify';}clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);}
@@ -1358,6 +1362,7 @@ void SmartgenHSC941Web::setup() {
   this->load_maintenance_config_();
   this->load_fuel_config_();
   this->load_runtime_history_();
+  this->init_buzzer_();
   this->start_server_();
   this->log_event("System booted");
 }
@@ -1412,6 +1417,12 @@ void SmartgenHSC941Web::dump_config() {
   ESP_LOGCONFIG(TAG, "  Language: %s", this->language_.c_str());
   if (this->mains_sensor_) {
     ESP_LOGCONFIG(TAG, "  Mains sensor: configured");
+  }
+  if (this->buzzer_pin_ >= 0) {
+    ESP_LOGCONFIG(TAG, "  Buzzer: GPIO%d", this->buzzer_pin_);
+  }
+  if (!this->pin_code_.empty()) {
+    ESP_LOGCONFIG(TAG, "  PIN lock: configured (4-digit)");
   }
 }
 
@@ -1803,17 +1814,71 @@ void SmartgenHSC941Web::check_alarm_transitions_() {
 
   // Board buzzer alarm
   bool any_alarm = shutdown || estop;
-  if (any_alarm && !this->buzzer_silenced_ && this->buzzer_ && !this->buzzer_active_) {
-    this->buzzer_->set_level(0.5f);
+  if (any_alarm && !this->buzzer_silenced_ && this->buzzer_pin_ >= 0 && !this->buzzer_active_) {
+    this->buzzer_start_();
     this->buzzer_active_ = true;
     ESP_LOGW(TAG, "Alarm buzzer activated");
   }
   if (!any_alarm && this->buzzer_active_) {
-    if (this->buzzer_) this->buzzer_->set_level(0.0f);
+    this->buzzer_stop_();
     this->buzzer_active_ = false;
     this->buzzer_silenced_ = false;
     ESP_LOGI(TAG, "Alarm buzzer deactivated");
   }
+}
+
+// ============================================================
+//  Buzzer — direct LEDC tone on dedicated timer/channel
+// ============================================================
+static const ledc_timer_t BUZZER_TIMER = LEDC_TIMER_3;
+static const ledc_channel_t BUZZER_CHANNEL = LEDC_CHANNEL_7;
+static const ledc_mode_t BUZZER_SPEED = LEDC_LOW_SPEED_MODE;
+
+void SmartgenHSC941Web::init_buzzer_() {
+  if (this->buzzer_pin_ < 0) return;
+
+  ledc_timer_config_t timer_conf = {};
+  timer_conf.speed_mode = BUZZER_SPEED;
+  timer_conf.timer_num = BUZZER_TIMER;
+  timer_conf.duty_resolution = LEDC_TIMER_10_BIT;
+  timer_conf.freq_hz = 2700;  // Typical piezo resonance frequency
+  timer_conf.clk_cfg = LEDC_AUTO_CLK;
+  esp_err_t err = ledc_timer_config(&timer_conf);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Buzzer LEDC timer config failed: %s", esp_err_to_name(err));
+    this->buzzer_pin_ = -1;
+    return;
+  }
+
+  ledc_channel_config_t chan_conf = {};
+  chan_conf.speed_mode = BUZZER_SPEED;
+  chan_conf.channel = BUZZER_CHANNEL;
+  chan_conf.timer_sel = BUZZER_TIMER;
+  chan_conf.intr_type = LEDC_INTR_DISABLE;
+  chan_conf.gpio_num = this->buzzer_pin_;
+  chan_conf.duty = 0;
+  chan_conf.hpoint = 0;
+  err = ledc_channel_config(&chan_conf);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "Buzzer LEDC channel config failed: %s", esp_err_to_name(err));
+    this->buzzer_pin_ = -1;
+    return;
+  }
+
+  ESP_LOGI(TAG, "Buzzer initialized on GPIO%d (2700 Hz, LEDC timer %d channel %d)",
+           this->buzzer_pin_, BUZZER_TIMER, BUZZER_CHANNEL);
+}
+
+void SmartgenHSC941Web::buzzer_start_() {
+  if (this->buzzer_pin_ < 0) return;
+  ledc_set_duty(BUZZER_SPEED, BUZZER_CHANNEL, 512);  // 50% of 1024 (10-bit)
+  ledc_update_duty(BUZZER_SPEED, BUZZER_CHANNEL);
+}
+
+void SmartgenHSC941Web::buzzer_stop_() {
+  if (this->buzzer_pin_ < 0) return;
+  ledc_set_duty(BUZZER_SPEED, BUZZER_CHANNEL, 0);
+  ledc_update_duty(BUZZER_SPEED, BUZZER_CHANNEL);
 }
 
 // ============================================================
@@ -2473,8 +2538,21 @@ void SmartgenHSC941Web::stop_server_() {
 // ============================================================
 
 esp_err_t SmartgenHSC941Web::handle_root_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
   httpd_resp_set_type(req, "text/html");
   httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  // Inject YAML-configured PIN code before </head> if set
+  if (self && !self->pin_code_.empty()) {
+    const char *head_end = strstr(DASHBOARD_HTML, "</head>");
+    if (head_end) {
+      httpd_resp_send_chunk(req, DASHBOARD_HTML, head_end - DASHBOARD_HTML);
+      char inject[64];
+      snprintf(inject, sizeof(inject), "<script>var cfgPin='%s';</script>", self->pin_code_.c_str());
+      httpd_resp_send_chunk(req, inject, strlen(inject));
+      httpd_resp_send_chunk(req, head_end, strlen(head_end));
+      return httpd_resp_send_chunk(req, nullptr, 0);
+    }
+  }
   return httpd_resp_send(req, DASHBOARD_HTML, strlen(DASHBOARD_HTML));
 }
 
@@ -3368,27 +3446,21 @@ esp_err_t SmartgenHSC941Web::handle_api_buzzer_post_(httpd_req_t *req) {
 
   bool ok = false;
   if (strstr(body, "\"silence\"")) {
-    if (self->buzzer_) {
-      self->buzzer_->set_level(0.0f);
-      self->buzzer_active_ = false;
-      self->buzzer_silenced_ = true;
-      ok = true;
-      self->log_event("Alarm buzzer silenced");
-    } else {
-      ok = true;  // No buzzer configured, silence is a no-op
-    }
+    self->buzzer_stop_();
+    self->buzzer_active_ = false;
+    self->buzzer_silenced_ = true;
+    ok = true;
+    self->log_event("Alarm buzzer silenced");
   } else if (strstr(body, "\"test\"")) {
-    if (self->buzzer_) {
-      self->buzzer_->set_level(0.5f);
+    if (self->buzzer_pin_ >= 0) {
+      self->buzzer_start_();
       self->buzzer_active_ = true;
       ok = true;
     }
   } else if (strstr(body, "\"stop\"")) {
-    if (self->buzzer_) {
-      self->buzzer_->set_level(0.0f);
-      self->buzzer_active_ = false;
-      ok = true;
-    }
+    self->buzzer_stop_();
+    self->buzzer_active_ = false;
+    ok = true;
   }
 
   httpd_resp_set_type(req, "application/json");
