@@ -1325,6 +1325,7 @@ void SmartgenHSC941Web::start_server_() {
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
   config.max_uri_handlers = 9;
+  config.max_open_sockets = 4;
   config.lru_purge_enable = true;
 
   esp_err_t err = httpd_start(&this->server_, &config);
