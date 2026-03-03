@@ -73,6 +73,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── Card ── */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.r-gauges .card{background:#1f2436;border-color:#2d3350}
 .card-hd{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .card-hd .ico{width:16px;height:16px;opacity:.5}
 .card-hd h2{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--dim)}
