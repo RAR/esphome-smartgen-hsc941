@@ -50,6 +50,11 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .nav-tab{padding:10px 18px;font-size:.78rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;user-select:none;background:none;border-top:none;border-left:none;border-right:none}
 .nav-tab:hover{color:var(--text)}
 .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.env-bar{display:none;background:var(--surface);border-bottom:1px solid var(--border);padding:6px 20px;position:sticky;top:88px;z-index:48;justify-content:flex-end;gap:16px;align-items:center}
+.env-bar.show{display:flex}
+.env-item{display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--dim)}
+.env-val{font-weight:700;color:var(--text);font-size:.85rem}
+.env-unit{font-size:.68rem;color:var(--dim)}
 .section{display:none}
 .section.active{display:block}
 .badge{padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
@@ -280,6 +285,12 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <button class="nav-tab" data-sec="history" onclick="switchSec('history')">History</button>
 </nav>
 
+<!-- Environment sub-bar -->
+<div class="env-bar" id="envBar">
+ <div class="env-item" id="ambItem" style="display:none"><span id="lblAmb">Ambient Temp</span>&nbsp;<span class="env-val" id="v_amb">--</span><span class="env-unit tunit">&#176;C</span></div>
+ <div class="env-item" id="humItem" style="display:none"><span id="lblHum">Humidity</span>&nbsp;<span class="env-val" id="v_hum">--</span><span class="env-unit">%</span></div>
+</div>
+
 <main class="main">
 
 <div class="section active" id="sec-monitor">
@@ -324,8 +335,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <tr><td class="dlbl">Aux Sensor 1</td><td class="dval"><span id="v_aux">--</span></td></tr>
     <tr><td class="dlbl">Engine State</td><td class="dval"><span id="v_es">--</span></td></tr>
     <tr><td class="dlbl">Auto State</td><td class="dval"><span id="v_as">--</span></td></tr>
-    <tr id="ambRow" style="display:none"><td class="dlbl" id="lblAmb">Ambient Temp</td><td class="dval"><span id="v_amb">--</span><span class="dunit tunit">&#176;C</span></td></tr>
-    <tr id="humRow" style="display:none"><td class="dlbl" id="lblHum">Humidity</td><td class="dval"><span id="v_hum">--</span><span class="dunit">%</span></td></tr>
    </table>
   </div>
  </div>
@@ -683,15 +692,17 @@ function update(d){
  });
  // Ambient temperature
  if(d.ambient_temp!=null){
-  const ar=document.getElementById('ambRow');if(ar)ar.style.display='';
+  const ai=document.getElementById('ambItem');if(ai)ai.style.display='';
   const ae=document.getElementById('v_amb');if(ae)ae.textContent=tempVal(d.ambient_temp,1);
   if(d.ambient_temp_name){const al=document.getElementById('lblAmb');if(al)al.textContent=d.ambient_temp_name;}
+  const eb=document.getElementById('envBar');if(eb)eb.classList.add('show');
  }
  // Ambient humidity
  if(d.ambient_humidity!=null){
-  const hr=document.getElementById('humRow');if(hr)hr.style.display='';
+  const hi=document.getElementById('humItem');if(hi)hi.style.display='';
   const he=document.getElementById('v_hum');if(he)he.textContent=f(d.ambient_humidity,1);
   if(d.ambient_humidity_name){const hl=document.getElementById('lblHum');if(hl)hl.textContent=d.ambient_humidity_name;}
+  const eb=document.getElementById('envBar');if(eb)eb.classList.add('show');
  }
  // Relays
  if(d.relays){
