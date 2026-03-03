@@ -18,6 +18,7 @@ CONF_TANK_SIZE = "tank_size_liters"
 CONF_BURN_RATE = "burn_rate_lph"
 CONF_LANGUAGE = "language"
 CONF_MAINS_SENSOR_ID = "mains_sensor_id"
+CONF_BUZZER_ID = "buzzer_id"
 CONF_RELAY_IDS = [f"relay_{i}_id" for i in range(1, 9)]
 CONF_RELAY_NAMES = [f"relay_{i}_name" for i in range(1, 9)]
 
@@ -33,6 +34,8 @@ switch_ns = cg.esphome_ns.namespace("switch_")
 Switch = switch_ns.class_("Switch")
 binary_sensor_ns = cg.esphome_ns.namespace("binary_sensor")
 BinarySensor = binary_sensor_ns.class_("BinarySensor")
+output_ns = cg.esphome_ns.namespace("output")
+FloatOutput = output_ns.class_("FloatOutput")
 
 schema = {
     cv.GenerateID(): cv.declare_id(SmartgenHSC941Web),
@@ -45,6 +48,7 @@ schema = {
     cv.Optional(CONF_BURN_RATE, default=0): cv.float_,
     cv.Optional(CONF_LANGUAGE, default="en"): cv.string,
     cv.Optional(CONF_MAINS_SENSOR_ID): cv.use_id(BinarySensor),
+    cv.Optional(CONF_BUZZER_ID): cv.use_id(FloatOutput),
     cv.Optional(CONF_AMBIENT_TEMP_ID): cv.use_id(Sensor),
     cv.Optional(CONF_AMBIENT_TEMP_NAME, default="Ambient Temp"): cv.string,
     cv.Optional(CONF_AMBIENT_HUMIDITY_ID): cv.use_id(Sensor),
@@ -88,6 +92,10 @@ async def to_code(config):
     if CONF_MAINS_SENSOR_ID in config:
         mains = await cg.get_variable(config[CONF_MAINS_SENSOR_ID])
         cg.add(var.set_mains_sensor(mains))
+
+    if CONF_BUZZER_ID in config:
+        buzzer = await cg.get_variable(config[CONF_BUZZER_ID])
+        cg.add(var.set_buzzer(buzzer))
 
     if CONF_AMBIENT_TEMP_ID in config:
         sens = await cg.get_variable(config[CONF_AMBIENT_TEMP_ID])

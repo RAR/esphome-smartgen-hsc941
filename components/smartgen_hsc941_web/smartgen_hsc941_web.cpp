@@ -299,6 +299,38 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .th-field select,.th-field input[type=number]{background:var(--card);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:7px 9px;font-size:.8rem;font-family:inherit;outline:none;transition:border .2s}
 .th-field select:focus,.th-field input[type=number]:focus{border-color:var(--blue)}
 .th-field select option{background:var(--card);color:var(--text)}
+/* ── Light Theme ── */
+[data-theme="light"]{--bg:#f0f2f5;--surface:#fff;--card:#fff;--border:#dfe2e8;--text:#1a1d26;--dim:#6b7280;--faint:#d1d5db;--gauge-track:#e5e7eb}
+[data-theme="light"] .hdr,[data-theme="light"] .nav{background:#fff;border-color:#dfe2e8}
+[data-theme="light"] ::-webkit-scrollbar-thumb{background:#c0c4cc}
+/* ── Header Icon Buttons ── */
+.hdr-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);cursor:pointer;font-size:.85rem;padding:3px 7px;line-height:1;transition:all .15s}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
+/* ── PIN Lock Overlay ── */
+.pin-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}.pin-ov.show{opacity:1;pointer-events:auto}
+.pin-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 20px;width:280px;text-align:center}
+.pin-box h3{margin:0 0 4px;font-size:.95rem}.pin-sub{font-size:.7rem;color:var(--dim);margin-bottom:14px}
+.pin-dg{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+.pin-dg input{width:42px;height:50px;background:var(--surface);border:2px solid var(--border);border-radius:8px;color:var(--text);font-size:1.3rem;text-align:center;font-weight:700;outline:none;-webkit-text-security:disc}
+.pin-dg input:focus{border-color:var(--blue)}
+.pin-btns{display:flex;gap:8px;justify-content:center}.pin-btns button{flex:1;padding:8px 0;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;border:none;transition:all .15s}
+.pin-ok{background:var(--blue);color:#fff}.pin-rm{background:var(--red);color:#fff}.pin-cn{background:var(--faint);color:var(--text)}
+.pin-msg{font-size:.7rem;color:var(--red);margin-top:8px;min-height:16px}
+/* ── ATS Power Flow ── */
+.ats-wrap{display:flex;align-items:center;justify-content:center;gap:0;padding:12px 8px;flex-wrap:nowrap}
+.ats-src{display:flex;flex-direction:column;gap:6px}
+.ats-nd{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:48px}
+.ats-ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;border:2px solid var(--border);background:var(--surface);transition:all .3s}
+.ats-ic svg{width:20px;height:20px;stroke:var(--dim);fill:none;stroke-width:2;transition:stroke .3s}
+.ats-ic.on{border-color:var(--green);background:var(--green-bg)}.ats-ic.on svg{stroke:var(--green)}
+.ats-ic.fail{border-color:var(--red);background:var(--red-bg)}.ats-ic.fail svg{stroke:var(--red)}
+.ats-lb{font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);white-space:nowrap}
+.ats-ln{flex:1;height:3px;min-width:20px;max-width:70px;background:var(--faint);border-radius:2px;position:relative;overflow:hidden;transition:background .3s}
+.ats-ln.flow{background:var(--green)}.ats-ln.flow::after{content:'';position:absolute;top:-1px;left:-60%;width:60%;height:5px;background:linear-gradient(90deg,transparent,rgba(34,197,94,.55),transparent);animation:atsf 1s linear infinite}
+@keyframes atsf{0%{left:-60%}100%{left:100%}}
+.ats-sw{width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .3s}
+.ats-sw.closed{border-color:var(--green);background:var(--green-bg)}.ats-sw svg{width:14px;height:14px;stroke:var(--dim);fill:none;stroke-width:2;transition:stroke .3s}
+.ats-sw.closed svg{stroke:var(--green)}
+@media(max-width:480px){.ats-wrap{padding:8px 4px}.ats-ic{width:32px;height:32px}.ats-ln{min-width:14px;max-width:36px}}
 </style>
 </head>
 <body>
@@ -313,6 +345,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   </div>
  </div>
  <div class="hdr-right">
+  <button class="hdr-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">&#9790;</button>
+  <button class="hdr-btn" id="lockBtn" onclick="openPinModal()" title="PIN lock">&#128275;</button>
+  <button class="hdr-btn" id="audioBtn" onclick="toggleAudioAlarm()" title="Alarm audio">&#128276;</button>
   <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">&deg;C</button>
   <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
@@ -393,6 +428,25 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     Show all indicators
    </button>
    <div class="ann-full" id="annFull"><div class="ann-grid" id="annPanel"></div></div>
+  </div>
+ </div>
+</div>
+
+<!-- ATS Power Flow -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg><h2>Transfer Switch</h2></div>
+  <div class="card-body">
+   <div class="ats-wrap" id="atsWrap">
+    <div class="ats-src">
+     <div class="ats-nd"><div class="ats-ic" id="atsMains"><svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg></div><span class="ats-lb" id="atsML">Mains</span></div>
+     <div class="ats-nd"><div class="ats-ic" id="atsGen"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6m-7.07-3.07l4.24-4.24m5.66-5.66l4.24-4.24M1 12h6m6 0h6m-3.07 7.07l-4.24-4.24m-5.66-5.66L4.93 4.93"/></svg></div><span class="ats-lb" id="atsGL">Gen</span></div>
+    </div>
+    <div class="ats-ln" id="atsSL"></div>
+    <div class="ats-nd"><div class="ats-sw" id="atsSW"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M8 12h8"/></svg></div><span class="ats-lb" id="atsSWL">ATS</span></div>
+    <div class="ats-ln" id="atsLL"></div>
+    <div class="ats-nd"><div class="ats-ic" id="atsLoad"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><span class="ats-lb" id="atsLoadL">Load</span></div>
+   </div>
   </div>
  </div>
 </div>
@@ -599,10 +653,35 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  </div>
 </div>
 
+<!-- PIN Lock Modal -->
+<div class="pin-ov" id="pinOverlay">
+ <div class="pin-box">
+  <h3 id="pinTitle">Enter PIN</h3>
+  <div class="pin-sub" id="pinSub">PIN required for control actions</div>
+  <div class="pin-dg">
+   <input type="tel" maxlength="1" id="pin0" oninput="pinAdv(this,1)" onkeydown="pinBk(event,0)">
+   <input type="tel" maxlength="1" id="pin1" oninput="pinAdv(this,2)" onkeydown="pinBk(event,1)">
+   <input type="tel" maxlength="1" id="pin2" oninput="pinAdv(this,3)" onkeydown="pinBk(event,2)">
+   <input type="tel" maxlength="1" id="pin3" oninput="pinAdv(this,null)" onkeydown="pinBk(event,3)">
+  </div>
+  <div class="pin-btns">
+   <button class="pin-cn" onclick="closePinModal()">Cancel</button>
+   <button class="pin-ok" id="pinOkBtn" onclick="pinOk()">Unlock</button>
+   <button class="pin-rm" id="pinClearBtn" onclick="pinClearAction()" style="display:none">Remove</button>
+  </div>
+  <div class="pin-msg" id="pinMsg"></div>
+ </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
 <script>
+/* ── Theme toggle ── */
+let darkTheme=localStorage.getItem('theme')!=='light';
+function applyThemeMode(){document.documentElement.setAttribute('data-theme',darkTheme?'dark':'light');const b=document.getElementById('themeBtn');if(b)b.innerHTML=darkTheme?'&#9790;':'&#9728;';const m=document.querySelector('meta[name="theme-color"]');if(m)m.content=darkTheme?'#0c0e14':'#f0f2f5';}
+function toggleTheme(){darkTheme=!darkTheme;localStorage.setItem('theme',darkTheme?'dark':'light');applyThemeMode();}
+applyThemeMode();
 /* ── Temperature unit toggle ── */
 let useFahr=localStorage.getItem('tempUnit')==='F';
 function cToF(c){return c*9/5+32;}
@@ -810,6 +889,10 @@ function update(d){
   if(!RELAYS.length)initRelays(d.relays);
   updateRelays(d.relays);
  }
+ // ATS power flow
+ updateATS(d);
+ // Browser audio alarm on shutdown
+ if(sdCount>0||b.estop===true){startAlarmAudio();}else{stopAlarmAudio();}
 }
 
 /* ── Polling ── */
@@ -825,6 +908,7 @@ function poll(){
 /* ── Command with confirmation ── */
 let pendingCoil=null;
 function confirmCmd(coil,title,msg,style){
+ if(requirePin(function(){confirmCmd(coil,title,msg,style);}))return;
  pendingCoil=coil;
  document.getElementById('modalTitle').textContent=title;
  document.getElementById('modalMsg').textContent=msg;
@@ -872,6 +956,7 @@ function updateRelays(rels){
  });
 }
 function toggleRelay(idx,on){
+ if(requirePin(function(){var c=document.getElementById('rly_cb_'+idx);if(c)c.checked=on;toggleRelay(idx,on);})){var c=document.getElementById('rly_cb_'+idx);if(c)c.checked=!on;return;}
  fetch('/api/relay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({relay:idx,state:on})})
  .then(r=>r.json()).then(d=>{
   if(!d.ok)toast('Relay command failed','err');
@@ -1072,6 +1157,33 @@ function clearEventLog(){
  .then(r=>r.json()).then(d=>{toast(d.ok?'Event log cleared':'Clear failed',d.ok?'ok':'err');loadEventLog();})
  .catch(()=>toast('Communication error','err'));
 }
+
+/* ── PIN Lock ── */
+var pinCode=localStorage.getItem('dashPin')||'',pinEnabled=pinCode.length===4,pinVerified=false,pendingCmdAfterPin=null,pinAction='';
+function requirePin(cb){if(!pinEnabled||pinVerified)return false;pendingCmdAfterPin=cb;document.getElementById('pinTitle').textContent='Enter PIN';document.getElementById('pinSub').textContent='PIN required for this action';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Unlock';pinAction='verify';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);return true;}
+function updateLockBtn(){var b=document.getElementById('lockBtn');if(!b)return;b.innerHTML=pinEnabled?'&#128274;':'&#128275;';b.title=pinEnabled?(pinVerified?'PIN active (unlocked)':'PIN lock active'):'Set PIN lock';}
+function openPinModal(){if(!pinEnabled){document.getElementById('pinTitle').textContent='Set PIN';document.getElementById('pinSub').textContent='Create a 4-digit PIN to lock controls';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Set';pinAction='set';}else if(pinVerified){document.getElementById('pinTitle').textContent='PIN Settings';document.getElementById('pinSub').textContent='Change or remove your PIN';document.getElementById('pinClearBtn').style.display='';document.getElementById('pinOkBtn').textContent='Change';pinAction='change';}else{document.getElementById('pinTitle').textContent='Unlock';document.getElementById('pinSub').textContent='Enter PIN to unlock controls';document.getElementById('pinClearBtn').style.display='';document.getElementById('pinOkBtn').textContent='Unlock';pinAction='verify';}clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pinOverlay').classList.add('show');setTimeout(function(){document.getElementById('pin0').focus();},100);}
+function closePinModal(){document.getElementById('pinOverlay').classList.remove('show');}
+function clearPinInputs(){for(var i=0;i<4;i++)document.getElementById('pin'+i).value='';}
+function getPinVal(){var v='';for(var i=0;i<4;i++)v+=document.getElementById('pin'+i).value;return v;}
+function pinAdv(el,nx){el.value=el.value.replace(/[^0-9]/g,'').slice(-1);if(el.value&&nx!=null)document.getElementById('pin'+nx).focus();}
+function pinBk(ev,i){if(ev.key==='Backspace'&&!ev.target.value&&i>0){document.getElementById('pin'+(i-1)).focus();}}
+function pinOk(){var v=getPinVal();if(v.length!==4){document.getElementById('pinMsg').textContent='Enter all 4 digits';return;}if(pinAction==='set'||pinAction==='change'){pinCode=v;localStorage.setItem('dashPin',pinCode);pinEnabled=true;pinVerified=true;updateLockBtn();closePinModal();toast('PIN '+(pinAction==='set'?'created':'changed'),'ok');}else if(pinAction==='verify'){if(v===pinCode){pinVerified=true;updateLockBtn();closePinModal();toast('Controls unlocked','ok');if(pendingCmdAfterPin){pendingCmdAfterPin();pendingCmdAfterPin=null;}}else{document.getElementById('pinMsg').textContent='Wrong PIN';clearPinInputs();document.getElementById('pin0').focus();}}else if(pinAction==='remove'){if(v===pinCode){pinCode='';localStorage.removeItem('dashPin');pinEnabled=false;pinVerified=false;updateLockBtn();closePinModal();toast('PIN removed','ok');}else{document.getElementById('pinMsg').textContent='Wrong PIN';clearPinInputs();document.getElementById('pin0').focus();}}}
+function pinClearAction(){document.getElementById('pinTitle').textContent='Remove PIN';document.getElementById('pinSub').textContent='Enter current PIN to confirm';document.getElementById('pinClearBtn').style.display='none';document.getElementById('pinOkBtn').textContent='Remove';pinAction='remove';clearPinInputs();document.getElementById('pinMsg').textContent='';document.getElementById('pin0').focus();}
+updateLockBtn();
+
+/* ── Audio Alarm ── */
+var audioCtx=null,alarmOsc=null,alarmLfo=null,audioMuted=localStorage.getItem('alarmMute')==='1';
+try{audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){}
+document.addEventListener('click',function(){if(audioCtx&&audioCtx.state==='suspended')audioCtx.resume();});
+function startAlarmAudio(){if(audioMuted||alarmOsc||!audioCtx)return;try{alarmOsc=audioCtx.createOscillator();var g=audioCtx.createGain();alarmOsc.type='square';alarmOsc.frequency.value=800;g.gain.value=0.12;alarmOsc.connect(g);g.connect(audioCtx.destination);alarmLfo=audioCtx.createOscillator();var lg=audioCtx.createGain();alarmLfo.frequency.value=2;lg.gain.value=200;alarmLfo.connect(lg);lg.connect(alarmOsc.frequency);alarmOsc.start();alarmLfo.start();}catch(e){}}
+function stopAlarmAudio(){try{if(alarmOsc){alarmOsc.stop();alarmOsc=null;}if(alarmLfo){alarmLfo.stop();alarmLfo=null;}}catch(e){alarmOsc=null;alarmLfo=null;}}
+function toggleAudioAlarm(){audioMuted=!audioMuted;localStorage.setItem('alarmMute',audioMuted?'1':'0');updateAudioBtn();if(audioMuted){stopAlarmAudio();fetch('/api/buzzer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'silence'})}).catch(function(){});}}
+function updateAudioBtn(){var b=document.getElementById('audioBtn');if(b)b.innerHTML=audioMuted?'&#128277;':'&#128276;';}
+updateAudioBtn();
+
+/* ── ATS Power Flow ── */
+function updateATS(d){var b=d.binary||{},s=d.sensors||{};var mOk=d.mains_ok!==false,gOn=b.on_load===true,eRun=s.rpm!=null&&s.rpm>100,lOk=gOn||mOk;var e;e=document.getElementById('atsMains');if(e)e.className='ats-ic'+(mOk?' on':' fail');e=document.getElementById('atsGen');if(e)e.className='ats-ic'+(eRun?' on':'');e=document.getElementById('atsSW');if(e)e.className='ats-sw'+(gOn?' closed':'');e=document.getElementById('atsSL');if(e)e.className='ats-ln'+((gOn&&eRun)||(!gOn&&mOk)?' flow':'');e=document.getElementById('atsLL');if(e)e.className='ats-ln'+(lOk?' flow':'');e=document.getElementById('atsLoad');if(e)e.className='ats-ic'+(lOk?' on':'');e=document.getElementById('atsML');if(e){e.textContent=mOk?'Mains OK':'Mains Fail';e.style.color=mOk?'var(--green)':'var(--red)';}e=document.getElementById('atsGL');if(e){e.textContent=eRun?'Gen Run':'Gen Off';e.style.color=eRun?'var(--green)':'var(--dim)';}e=document.getElementById('atsSWL');if(e)e.textContent=gOn?'Xfr Closed':'ATS';e=document.getElementById('atsLoadL');if(e){e.textContent=lOk?'Powered':'No Power';e.style.color=lOk?'var(--green)':'var(--red)';}}
 
 /* ── Init ── */
 initGauges();initPanels();updateTempUnits();poll();setInterval(poll,2500);
@@ -1688,6 +1800,20 @@ void SmartgenHSC941Web::check_alarm_transitions_() {
     this->log_event(gen_on_load ? "Generator ON LOAD (transfer switch closed)" : "Generator OFF LOAD (transfer switch opened)");
     this->prev_gen_on_load_ = gen_on_load;
   }
+
+  // Board buzzer alarm
+  bool any_alarm = shutdown || estop;
+  if (any_alarm && !this->buzzer_silenced_ && this->buzzer_ && !this->buzzer_active_) {
+    this->buzzer_->set_level(0.5f);
+    this->buzzer_active_ = true;
+    ESP_LOGW(TAG, "Alarm buzzer activated");
+  }
+  if (!any_alarm && this->buzzer_active_) {
+    if (this->buzzer_) this->buzzer_->set_level(0.0f);
+    this->buzzer_active_ = false;
+    this->buzzer_silenced_ = false;
+    ESP_LOGI(TAG, "Alarm buzzer deactivated");
+  }
 }
 
 // ============================================================
@@ -2180,7 +2306,7 @@ void SmartgenHSC941Web::start_server_() {
   config.server_port = this->port_;
   config.ctrl_port = this->port_ + 32768;  // control port offset
   config.stack_size = 8192;
-  config.max_uri_handlers = 18;
+  config.max_uri_handlers = 20;
   config.max_open_sockets = 4;
   config.lru_purge_enable = true;
 
@@ -2324,6 +2450,15 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &runtime_hist_uri);
+
+  // Buzzer
+  httpd_uri_t buzzer_post_uri = {
+      .uri = "/api/buzzer",
+      .method = HTTP_POST,
+      .handler = SmartgenHSC941Web::handle_api_buzzer_post_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &buzzer_post_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -3210,6 +3345,56 @@ esp_err_t SmartgenHSC941Web::handle_api_runtime_history_(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   return httpd_resp_send(req, json.c_str(), json.size());
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_buzzer_post_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+  int content_len = req->content_len;
+  if (content_len <= 0 || content_len > 256) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Invalid body");
+    return ESP_FAIL;
+  }
+  char body[257];
+  int received = httpd_req_recv(req, body, content_len);
+  if (received <= 0) {
+    httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "Read error");
+    return ESP_FAIL;
+  }
+  body[received] = '\0';
+
+  bool ok = false;
+  if (strstr(body, "\"silence\"")) {
+    if (self->buzzer_) {
+      self->buzzer_->set_level(0.0f);
+      self->buzzer_active_ = false;
+      self->buzzer_silenced_ = true;
+      ok = true;
+      self->log_event("Alarm buzzer silenced");
+    } else {
+      ok = true;  // No buzzer configured, silence is a no-op
+    }
+  } else if (strstr(body, "\"test\"")) {
+    if (self->buzzer_) {
+      self->buzzer_->set_level(0.5f);
+      self->buzzer_active_ = true;
+      ok = true;
+    }
+  } else if (strstr(body, "\"stop\"")) {
+    if (self->buzzer_) {
+      self->buzzer_->set_level(0.0f);
+      self->buzzer_active_ = false;
+      ok = true;
+    }
+  }
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  const char *resp = ok ? R"({"ok":true})" : R"({"ok":false})";
+  return httpd_resp_send(req, resp, strlen(resp));
 }
 
 }  // namespace smartgen_hsc941_web

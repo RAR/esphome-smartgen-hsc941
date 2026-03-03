@@ -4,6 +4,7 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/switch/switch.h"
+#include "esphome/components/output/float_output.h"
 #include "../smartgen_hsc941/smartgen_hsc941.h"
 #include <esp_http_server.h>
 #include <nvs_flash.h>
@@ -92,6 +93,7 @@ class SmartgenHSC941Web : public Component {
   void set_burn_rate(float v) { this->burn_rate_lph_ = v; }
   void set_language(const std::string &l) { this->language_ = l; }
   void set_mains_sensor(binary_sensor::BinarySensor *s) { this->mains_sensor_ = s; }
+  void set_buzzer(output::FloatOutput *o) { this->buzzer_ = o; }
   void set_relay(uint8_t index, switch_::Switch *sw, const std::string &name) {
     if (index < MAX_RELAYS) {
       this->relays_[index].sw = sw;
@@ -121,6 +123,7 @@ class SmartgenHSC941Web : public Component {
   static esp_err_t handle_api_fuel_get_(httpd_req_t *req);
   static esp_err_t handle_api_fuel_post_(httpd_req_t *req);
   static esp_err_t handle_api_runtime_history_(httpd_req_t *req);
+  static esp_err_t handle_api_buzzer_post_(httpd_req_t *req);
 
   // Accessor for the controller
   smartgen_hsc941::SmartgenHSC941 *get_controller() { return this->controller_; }
@@ -177,6 +180,9 @@ class SmartgenHSC941Web : public Component {
   bool single_phase_{false};
   std::string language_{"en"};
   binary_sensor::BinarySensor *mains_sensor_{nullptr};
+  output::FloatOutput *buzzer_{nullptr};
+  bool buzzer_active_{false};
+  bool buzzer_silenced_{false};
   std::array<RelayInfo, MAX_RELAYS> relays_{};
 
   // ── Exercise schedule ──
