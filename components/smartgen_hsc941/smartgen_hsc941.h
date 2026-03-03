@@ -70,6 +70,22 @@ class SmartgenHSC941 : public PollingComponent {
   bool is_start_relay_active() const {
     return (this->start_relay_output_bs_ && this->start_relay_output_bs_->state);
   }
+  bool is_in_auto_mode() const {
+    return (this->in_auto_mode_bs_ && this->in_auto_mode_bs_->state);
+  }
+  bool is_in_manual_mode() const {
+    return (this->in_manual_mode_bs_ && this->in_manual_mode_bs_->state);
+  }
+  bool is_in_stop_mode() const {
+    return (this->in_stop_mode_bs_ && this->in_stop_mode_bs_->state);
+  }
+  bool is_emergency_stop() const {
+    return (this->emergency_stop_bs_ && this->emergency_stop_bs_->state) ||
+           (this->emergency_stop_input_bs_ && this->emergency_stop_input_bs_->state);
+  }
+  bool is_gen_on_load() const {
+    return (this->gen_on_load_bs_ && this->gen_on_load_bs_->state);
+  }
 
   // Temperature sensor accessors (for companion components)
   sensor::Sensor *get_water_temp_sensor() const { return this->water_temp_sensor_; }

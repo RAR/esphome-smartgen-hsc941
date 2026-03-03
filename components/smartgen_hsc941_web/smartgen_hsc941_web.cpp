@@ -1281,6 +1281,11 @@ void SmartgenHSC941Web::check_alarm_transitions_() {
   bool connected = this->controller_->is_connected();
   bool shutdown = this->controller_->is_any_shutdown();
   bool engine_running = this->controller_->is_engine_running();
+  bool auto_mode = this->controller_->is_in_auto_mode();
+  bool manual_mode = this->controller_->is_in_manual_mode();
+  bool stop_mode = this->controller_->is_in_stop_mode();
+  bool estop = this->controller_->is_emergency_stop();
+  bool gen_on_load = this->controller_->is_gen_on_load();
 
   // Connection state change
   if (connected != this->prev_connected_) {
@@ -1296,6 +1301,12 @@ void SmartgenHSC941Web::check_alarm_transitions_() {
     this->prev_shutdown_ = shutdown;
   }
 
+  // Emergency stop
+  if (estop != this->prev_estop_) {
+    this->log_event(estop ? "EMERGENCY STOP activated" : "Emergency stop cleared");
+    this->prev_estop_ = estop;
+  }
+
   // Engine running state change
   if (engine_running != this->prev_engine_running_) {
     if (engine_running) {
@@ -1306,6 +1317,26 @@ void SmartgenHSC941Web::check_alarm_transitions_() {
       this->log_event("Engine stopped");
     }
     this->prev_engine_running_ = engine_running;
+  }
+
+  // Controller mode changes (physical panel buttons)
+  if (auto_mode != this->prev_auto_mode_) {
+    if (auto_mode) this->log_event("Panel: switched to AUTO mode");
+    this->prev_auto_mode_ = auto_mode;
+  }
+  if (manual_mode != this->prev_manual_mode_) {
+    if (manual_mode) this->log_event("Panel: switched to MANUAL mode");
+    this->prev_manual_mode_ = manual_mode;
+  }
+  if (stop_mode != this->prev_stop_mode_) {
+    if (stop_mode) this->log_event("Panel: switched to STOP mode");
+    this->prev_stop_mode_ = stop_mode;
+  }
+
+  // Generator load state change (transfer switch)
+  if (gen_on_load != this->prev_gen_on_load_) {
+    this->log_event(gen_on_load ? "Generator ON LOAD (transfer switch closed)" : "Generator OFF LOAD (transfer switch opened)");
+    this->prev_gen_on_load_ = gen_on_load;
   }
 }
 
@@ -1990,6 +2021,9 @@ esp_err_t SmartgenHSC941Web::handle_api_exercise_post_(httpd_req_t *req) {
   self->exercise_cfg_.load_transfer = (strstr(body, "\"load_transfer\":true") != nullptr);
 
   self->save_exercise_config_();
+  self->log_event(self->exercise_cfg_.enabled
+    ? "Exercise config saved (enabled)"
+    : "Exercise config saved (disabled)");
 
   // Reset trigger guard so schedule re-evaluates
   self->exercise_triggered_today_ = false;
@@ -2143,6 +2177,7 @@ esp_err_t SmartgenHSC941Web::handle_api_thermostat_post_(httpd_req_t *req) {
 
   delete[] body;
   self->save_thermostat_config_();
+  self->log_event("Thermostat config saved");
 
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");

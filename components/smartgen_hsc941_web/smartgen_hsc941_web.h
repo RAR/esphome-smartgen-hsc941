@@ -158,6 +158,10 @@ class SmartgenHSC941Web : public Component {
   bool prev_warning_{false};
   bool prev_estop_{false};
   bool prev_engine_running_{false};
+  bool prev_auto_mode_{false};
+  bool prev_manual_mode_{false};
+  bool prev_stop_mode_{false};
+  bool prev_gen_on_load_{false};
   uint32_t last_alarm_check_{0};
 
   void init_spiffs_();
