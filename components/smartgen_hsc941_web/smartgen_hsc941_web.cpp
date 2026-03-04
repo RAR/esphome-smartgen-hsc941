@@ -2621,7 +2621,7 @@ void SmartgenHSC941Web::stop_server_() {
 esp_err_t SmartgenHSC941Web::handle_root_(httpd_req_t *req) {
   auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
   httpd_resp_set_type(req, "text/html");
-  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-store, no-cache, must-revalidate");
   // Inject YAML-configured PIN code before </head> if set
   if (self && !self->pin_code_.empty()) {
     const char *head_end = strstr(DASHBOARD_HTML, "</head>");
