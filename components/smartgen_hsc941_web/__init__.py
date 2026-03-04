@@ -14,8 +14,10 @@ CONF_AMBIENT_TEMP_NAME = "ambient_temp_name"
 CONF_AMBIENT_HUMIDITY_ID = "ambient_humidity_id"
 CONF_AMBIENT_HUMIDITY_NAME = "ambient_humidity_name"
 CONF_SINGLE_PHASE = "single_phase"
-CONF_TANK_SIZE = "tank_size_liters"
-CONF_BURN_RATE = "burn_rate_lph"
+CONF_TANK_SIZE = "tank_size"
+CONF_BURN_RATE = "burn_rate"
+CONF_FUEL_TYPE = "fuel_type"
+CONF_FUEL_UNIT = "fuel_unit"
 CONF_LANGUAGE = "language"
 CONF_MAINS_SENSOR_ID = "mains_sensor_id"
 CONF_FUEL_LEVEL_ID = "fuel_level_id"
@@ -46,6 +48,8 @@ schema = {
     cv.Optional(CONF_SINGLE_PHASE, default=False): cv.boolean,
     cv.Optional(CONF_TANK_SIZE, default=0): cv.float_,
     cv.Optional(CONF_BURN_RATE, default=0): cv.float_,
+    cv.Optional(CONF_FUEL_TYPE, default="diesel"): cv.one_of("diesel", "propane", "natural_gas", "gasoline", lower=True),
+    cv.Optional(CONF_FUEL_UNIT, default="lph"): cv.one_of("lph", "gph", lower=True),
     cv.Optional(CONF_LANGUAGE, default="en"): cv.string,
     cv.Optional(CONF_MAINS_SENSOR_ID): cv.use_id(BinarySensor),
     cv.Optional(CONF_FUEL_LEVEL_ID): cv.use_id(Sensor),
@@ -88,6 +92,8 @@ async def to_code(config):
         cg.add(var.set_tank_size(config[CONF_TANK_SIZE]))
     if config[CONF_BURN_RATE] > 0:
         cg.add(var.set_burn_rate(config[CONF_BURN_RATE]))
+    cg.add(var.set_fuel_type(config[CONF_FUEL_TYPE]))
+    cg.add(var.set_fuel_unit(config[CONF_FUEL_UNIT]))
     if config[CONF_LANGUAGE] != "en":
         cg.add(var.set_language(config[CONF_LANGUAGE]))
 
