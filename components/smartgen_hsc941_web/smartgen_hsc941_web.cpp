@@ -471,17 +471,17 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="card-body"><div class="io-grid" id="ioPanel"></div></div>
  </div>
 </div>
-<!-- Fuel Estimate -->
+<!-- Fuel / Propane Level -->
 <div class="row r-full" id="fuelSection" style="display:none">
  <div class="card">
-  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V5a2 2 0 012-2h6a2 2 0 012 2v17"/><path d="M13 10h4a2 2 0 012 2v10"/></svg><h2>Fuel Estimate</h2></div>
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 22V5a2 2 0 012-2h6a2 2 0 012 2v17"/><path d="M13 10h4a2 2 0 012 2v10"/></svg><h2 id="fuelTitle">Fuel Level</h2></div>
   <div class="card-body">
    <div class="fuel-bar-outer"><div class="fuel-bar-inner" id="fuelBar"></div><div class="fuel-bar-text" id="fuelPct">--</div></div>
-   <div class="fuel-stats">
-    <div class="fuel-stat">Remaining: <span id="fuelRemain">--</span> L</div>
-    <div class="fuel-stat">Est. Runtime: <span id="fuelRuntime">--</span> h</div>
-    <div class="fuel-stat">Tank: <span id="fuelTank">--</span> L</div>
-    <button class="evtlog-clear" style="margin-left:auto" onclick="fillTank()">Mark Filled</button>
+   <div class="fuel-stats" id="fuelStats">
+    <div class="fuel-stat" id="fuelRemainStat">Remaining: <span id="fuelRemain">--</span> L</div>
+    <div class="fuel-stat" id="fuelRuntimeStat">Est. Runtime: <span id="fuelRuntime">--</span> h</div>
+    <div class="fuel-stat" id="fuelTankStat">Tank: <span id="fuelTank">--</span> L</div>
+    <button class="evtlog-clear" style="margin-left:auto" id="fuelFillBtn" onclick="fillTank()">Mark Filled</button>
    </div>
   </div>
  </div>
@@ -1330,20 +1330,27 @@ async function importAllConfig(ev){const file=ev.target.files[0];if(!file)return
   loadExercise();loadThermostat();loadMaint();loadFuel();
  }catch(x){toast('Invalid JSON file','err');}};reader.readAsText(file);ev.target.value='';}
 
-/* ── Fuel Estimator ── */
+/* ── Fuel / Propane Level ── */
 function loadFuel(){fetch('/api/fuel').then(r=>r.json()).then(d=>{
  const s=document.getElementById('fuelSection');
- if(!d.tank_size){if(s)s.style.display='none';return;}
+ if(!d.tank_size&&!d.sensor){if(s)s.style.display='none';return;}
  if(s)s.style.display='';renderFuel(d);
 }).catch(()=>{});}
 function renderFuel(d){
+ const isSensor=!!d.sensor;
+ const title=document.getElementById('fuelTitle');
+ if(title)title.textContent=isSensor?'Propane Level':'Fuel Estimate';
  const pct=Math.max(0,Math.min(100,d.pct||0));
  const bar=document.getElementById('fuelBar');
  if(bar){bar.style.width=pct+'%';bar.style.background=pct>25?'var(--green)':pct>10?'var(--orange)':'var(--red)';}
- const t=document.getElementById('fuelPct');if(t)t.textContent=Math.round(pct)+'%';
+ const t=document.getElementById('fuelPct');if(t)t.textContent=d.waiting?'Waiting...':Math.round(pct)+'%';
+ const rs=document.getElementById('fuelRemainStat');if(rs)rs.style.display=(d.tank_size>0)?'':'none';
  const r=document.getElementById('fuelRemain');if(r)r.textContent=(d.remain||0).toFixed(1);
+ const rts=document.getElementById('fuelRuntimeStat');if(rts)rts.style.display=(d.burn_rate>0&&d.remain>0)?'':'none';
  const rt=document.getElementById('fuelRuntime');if(rt)rt.textContent=(d.est_hours||0).toFixed(1);
+ const tks=document.getElementById('fuelTankStat');if(tks)tks.style.display=(d.tank_size>0)?'':'none';
  const tk=document.getElementById('fuelTank');if(tk)tk.textContent=(d.tank_size||0).toFixed(0);
+ const fb=document.getElementById('fuelFillBtn');if(fb)fb.style.display=isSensor?'none':'';
 }
 function fillTank(){fetch('/api/fuel',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'fill'})})
  .then(r=>r.json()).then(d=>{toast(d.ok?'Tank marked filled':'Failed',d.ok?'ok':'err');loadFuel();}).catch(()=>toast('Error','err'));}
@@ -3363,9 +3370,38 @@ esp_err_t SmartgenHSC941Web::handle_api_fuel_get_(httpd_req_t *req) {
     return ESP_FAIL;
   }
 
+  // Mode 1: Real fuel level sensor (e.g. Mopeka propane sensor → percentage)
+  auto *fuel_sens = self->get_fuel_level_sensor();
+  if (fuel_sens && fuel_sens->has_state() && !std::isnan(fuel_sens->state)) {
+    float pct = fuel_sens->state;
+    if (pct < 0) pct = 0;
+    if (pct > 100) pct = 100;
+    float tank = self->get_tank_size();
+    float remain = (tank > 0) ? tank * pct / 100.0f : 0;
+    float rate = self->get_burn_rate();
+    float est_hours = (rate > 0 && remain > 0) ? remain / rate : 0;
+
+    char json[256];
+    snprintf(json, sizeof(json),
+      "{\"sensor\":true,\"tank_size\":%.1f,\"burn_rate\":%.2f,\"pct\":%.1f,\"remain\":%.1f,\"est_hours\":%.1f}",
+      tank, rate, pct, remain, est_hours);
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    return httpd_resp_send(req, json, strlen(json));
+  }
+
+  // Mode 2: Burn-rate estimation (fallback)
   float tank = self->get_tank_size();
   float rate = self->get_burn_rate();
   if (tank <= 0 || rate <= 0) {
+    // Check if we have a fuel sensor configured but it hasn't reported yet
+    if (fuel_sens) {
+      const char *r = R"({"sensor":true,"tank_size":0,"pct":0,"waiting":true})";
+      httpd_resp_set_type(req, "application/json");
+      return httpd_resp_send(req, r, strlen(r));
+    }
     const char *r = R"({"tank_size":0})";
     httpd_resp_set_type(req, "application/json");
     return httpd_resp_send(req, r, strlen(r));

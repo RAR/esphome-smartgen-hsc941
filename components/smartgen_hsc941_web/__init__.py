@@ -18,6 +18,7 @@ CONF_TANK_SIZE = "tank_size_liters"
 CONF_BURN_RATE = "burn_rate_lph"
 CONF_LANGUAGE = "language"
 CONF_MAINS_SENSOR_ID = "mains_sensor_id"
+CONF_FUEL_LEVEL_ID = "fuel_level_id"
 CONF_BUZZER_PIN = "buzzer_pin"
 CONF_PIN_CODE = "pin_code"
 CONF_RELAY_IDS = [f"relay_{i}_id" for i in range(1, 9)]
@@ -47,6 +48,7 @@ schema = {
     cv.Optional(CONF_BURN_RATE, default=0): cv.float_,
     cv.Optional(CONF_LANGUAGE, default="en"): cv.string,
     cv.Optional(CONF_MAINS_SENSOR_ID): cv.use_id(BinarySensor),
+    cv.Optional(CONF_FUEL_LEVEL_ID): cv.use_id(Sensor),
     cv.Optional(CONF_BUZZER_PIN): cv.int_range(min=0, max=48),
     cv.Optional(CONF_PIN_CODE, default=""): cv.string,
     cv.Optional(CONF_AMBIENT_TEMP_ID): cv.use_id(Sensor),
@@ -92,6 +94,10 @@ async def to_code(config):
     if CONF_MAINS_SENSOR_ID in config:
         mains = await cg.get_variable(config[CONF_MAINS_SENSOR_ID])
         cg.add(var.set_mains_sensor(mains))
+
+    if CONF_FUEL_LEVEL_ID in config:
+        fuel_sens = await cg.get_variable(config[CONF_FUEL_LEVEL_ID])
+        cg.add(var.set_fuel_level_sensor(fuel_sens))
 
     if CONF_BUZZER_PIN in config:
         cg.add(var.set_buzzer_pin(config[CONF_BUZZER_PIN]))

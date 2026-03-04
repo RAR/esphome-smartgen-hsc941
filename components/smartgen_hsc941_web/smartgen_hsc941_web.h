@@ -90,6 +90,7 @@ class SmartgenHSC941Web : public Component {
   void set_single_phase(bool v) { this->single_phase_ = v; }
   void set_tank_size(float v) { this->tank_size_liters_ = v; }
   void set_burn_rate(float v) { this->burn_rate_lph_ = v; }
+  void set_fuel_level_sensor(sensor::Sensor *s) { this->fuel_level_sensor_ = s; }
   void set_language(const std::string &l) { this->language_ = l; }
   void set_mains_sensor(binary_sensor::BinarySensor *s) { this->mains_sensor_ = s; }
   void set_buzzer_pin(int pin) { this->buzzer_pin_ = (int8_t)pin; }
@@ -158,6 +159,7 @@ class SmartgenHSC941Web : public Component {
   float get_tank_size() const { return this->tank_size_liters_; }
   float get_burn_rate() const { return this->burn_rate_lph_; }
   float get_last_fill_hours() const { return this->last_fill_hours_; }
+  sensor::Sensor *get_fuel_level_sensor() { return this->fuel_level_sensor_; }
 
   // Runtime history
   const std::vector<RuntimeDay> &get_runtime_history() const { return this->runtime_history_; }
@@ -249,6 +251,7 @@ class SmartgenHSC941Web : public Component {
   float tank_size_liters_{0};
   float burn_rate_lph_{0};
   float last_fill_hours_{0};
+  sensor::Sensor *fuel_level_sensor_{nullptr};
   void load_fuel_config_();
   void save_fuel_config_();
 
