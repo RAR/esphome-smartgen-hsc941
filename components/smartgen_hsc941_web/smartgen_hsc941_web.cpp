@@ -242,6 +242,17 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .spark-area{opacity:.15}
 
 /* ── Battery trend ── */
+.batt-card-body{padding:12px 14px}
+.batt-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.batt-stats{display:flex;gap:14px}
+.batt-stat{text-align:center}
+.batt-stat-val{font-size:.95rem;font-weight:700;font-variant-numeric:tabular-nums}
+.batt-stat-lbl{font-size:.52rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.batt-now{font-size:1.4rem;font-weight:700;font-variant-numeric:tabular-nums}
+.batt-now-lbl{font-size:.52rem;color:var(--dim);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.batt-spark-wrap{width:100%;height:48px;position:relative}
+.batt-spark-wrap svg{display:block;width:100%;height:100%}
+@media(max-width:600px){.batt-stats{gap:10px}.batt-stat-val{font-size:.82rem}.batt-now{font-size:1.1rem}.batt-spark-wrap{height:40px}}
 
 
 /* ── Maintenance ── */
@@ -607,11 +618,24 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
     <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
    </div>
-   <div class="runtime-row" style="margin-top:8px">
-    <div class="runtime-item"><div class="runtime-val" id="battMin">--</div><div class="runtime-lbl">Battery 24h Min</div></div>
-    <div class="runtime-item"><div class="runtime-val" id="battAvg">--</div><div class="runtime-lbl">Battery 24h Avg</div></div>
-    <div class="runtime-item"><div class="runtime-val" id="battMax">--</div><div class="runtime-lbl">Battery 24h Max</div></div>
    </div>
+  </div>
+ </div>
+</div>
+<!-- Battery Voltage -->
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="18" height="12" rx="2"/><line x1="23" y1="10" x2="23" y2="14"/></svg><h2>Battery Voltage</h2></div>
+  <div class="batt-card-body">
+   <div class="batt-hdr">
+    <div><div class="batt-now" id="battNow">--</div><div class="batt-now-lbl">Current</div></div>
+    <div class="batt-stats">
+     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--cyan)" id="battMin">--</div><div class="batt-stat-lbl">24h Min</div></div>
+     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--dim)" id="battAvg">--</div><div class="batt-stat-lbl">24h Avg</div></div>
+     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--orange)" id="battMax">--</div><div class="batt-stat-lbl">24h Max</div></div>
+    </div>
+   </div>
+   <div class="batt-spark-wrap" id="battSparkWrap"></div>
   </div>
  </div>
 </div>
@@ -1218,10 +1242,21 @@ function renderSparkline(){const w=document.getElementById('loadSparkWrap');if(!
 
 /* ── Battery Voltage Trend ── */
 let bMin=999,bMax=0,bSum=0,bCnt=0;
+const battBuf=[];
 function pushBatt(v){if(v==null||v<=0)return;
  if(v<bMin)bMin=v;if(v>bMax)bMax=v;bSum+=v;bCnt++;
- const mn=document.getElementById('battMin'),mx=document.getElementById('battMax'),av=document.getElementById('battAvg');
- if(mn)mn.textContent=bMin.toFixed(1)+'V';if(mx)mx.textContent=bMax.toFixed(1)+'V';if(av)av.textContent=(bSum/bCnt).toFixed(1)+'V';
+ battBuf.push(v);if(battBuf.length>120)battBuf.shift();
+ const mn=document.getElementById('battMin'),mx=document.getElementById('battMax'),av=document.getElementById('battAvg'),nw=document.getElementById('battNow');
+ if(mn)mn.textContent=bMin.toFixed(1)+'V';if(mx)mx.textContent=bMax.toFixed(1)+'V';if(av)av.textContent=(bSum/bCnt).toFixed(1)+'V';if(nw)nw.textContent=v.toFixed(1)+'V';
+ renderBattSparkline();
+}
+function renderBattSparkline(){const w=document.getElementById('battSparkWrap');if(!w||battBuf.length<3)return;
+ const W=w.clientWidth||200,H=48;
+ const lo=Math.min(...battBuf),hi=Math.max(...battBuf);
+ const range=hi-lo||1;const pad=range*0.1;
+ const yMin=lo-pad,yMax=hi+pad,yR=yMax-yMin;
+ const pts=battBuf.map((v,i)=>((i/(battBuf.length-1))*W).toFixed(1)+','+(H-(v-yMin)/yR*H).toFixed(1)).join(' ');
+ w.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none"><polygon points="0,'+H+' '+pts+' '+W+','+H+'" fill="var(--cyan)" opacity=".12"/><polyline points="'+pts+'" fill="none" stroke="var(--cyan)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 }
 
 /* ── Maintenance Tracker ── */
