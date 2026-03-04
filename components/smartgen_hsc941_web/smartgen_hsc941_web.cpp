@@ -206,6 +206,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .sb-btn::before{content:'';position:absolute;inset:0;border-radius:10px;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.06)}
 .sb-btn:hover::before{opacity:1}
 .sb-btn:hover{color:var(--text);border-color:var(--faint)}
+.sb-btn.active{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 6px rgba(34,211,238,.25)}
 .sb-btn:active{transform:scale(.92)}
 .sb-btn svg{width:18px;height:18px;pointer-events:none;flex-shrink:0}
 .sb-btn .sb-lbl{font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1;pointer-events:none;white-space:nowrap}
@@ -429,24 +430,24 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 <!-- Sidebar Controls (desktop) -->
 <aside class="sidebar" id="sidebar">
- <button class="sb-btn" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')">
+ <button class="sb-btn" id="sbStart" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')">
   <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg><span class="sb-lbl">Start</span>
  </button>
- <button class="sb-btn" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')">
+ <button class="sb-btn" id="sbStop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')">
   <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><span class="sb-lbl">Stop</span>
  </button>
  <div class="sb-divider"></div>
- <button class="sb-btn" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')">
+ <button class="sb-btn" id="sbAuto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="sb-lbl">Auto</span>
  </button>
- <button class="sb-btn" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')">
+ <button class="sb-btn" id="sbManual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 00-4 0"/><path d="M14 10V4a2 2 0 00-4 0v6"/><path d="M10 9.5V5a2 2 0 00-4 0v9"/><path d="M18 11a2 2 0 014 0v3a8 8 0 01-8 8h-2c-2.5 0-3.8-.5-5.5-2L4 16.5a2 2 0 013-2.5L8 15"/></svg><span class="sb-lbl">Manual</span>
  </button>
  <div class="sb-divider"></div>
- <button class="sb-btn" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')">
+ <button class="sb-btn" id="sbXferOn" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64A9 9 0 0120.77 15"/><path d="M5.64 6.64A9 9 0 003.23 15"/><circle cx="12" cy="20" r="1"/><path d="M12 2v10"/></svg><span class="sb-lbl">Xfer On</span>
  </button>
- <button class="sb-btn" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')">
+ <button class="sb-btn" id="sbXferOff" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64A9 9 0 0120.77 15"/><path d="M5.64 6.64A9 9 0 003.23 15"/><circle cx="12" cy="20" r="1"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="4" y1="6" x2="18" y2="16"/></svg><span class="sb-lbl">Xfer Off</span>
  </button>
  <div class="sb-divider"></div>
@@ -862,6 +863,12 @@ function update(d){
  else if(b.stop_mode){mb.textContent='STOP';mb.className='badge badge-stop';}
  else{mb.textContent='---';mb.className='badge badge-mode';}
  const s=d.sensors||{};
+ // Sidebar active states
+ const sa=(id,on)=>{const e=document.getElementById(id);if(e)e.classList.toggle('active',!!on);};
+ sa('sbAuto',b.auto_mode);sa('sbManual',b.manual_mode);
+ sa('sbXferOn',b.on_load);sa('sbXferOff','on_load' in b&&!b.on_load);
+ const eng=s.eng_status!=null&&s.eng_status>0;
+ sa('sbStart',eng);sa('sbStop',b.stop_mode&&!eng);
  // Gauges: prefer gen_va, fallback to first available
  const vavg=(s.gen_va!==null&&s.gen_va!==undefined)?s.gen_va:null;
  G.volt.set(vavg);G.freq.set(s.gen_freq!=null?s.gen_freq:null);
