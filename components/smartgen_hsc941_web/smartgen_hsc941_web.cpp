@@ -102,7 +102,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── Layout ── */
 .main{max-width:1400px;margin:0 auto;padding:16px 20px 80px}
-@media(min-width:769px){.main{margin-left:62px;max-width:calc(1400px + 62px)}}
+@media(min-width:769px){.main{margin-left:76px;max-width:calc(1400px + 76px)}}
 .row{display:grid;gap:12px;margin-bottom:12px}
 .r-gauges{grid-template-columns:repeat(4,1fr)}
 .r-dual{grid-template-columns:1fr 1fr}
@@ -201,15 +201,14 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .btn-reset{background:linear-gradient(135deg,#7c3aed,#a855f7)}
 
 /* ── Sidebar (desktop) ── */
-.sidebar{position:fixed;left:0;top:92px;bottom:0;width:62px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0 16px;gap:6px;z-index:48;overflow-y:auto;overflow-x:hidden}
-.sb-btn{position:relative;width:44px;height:44px;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:#fff;flex-shrink:0}
+.sidebar{position:fixed;left:0;top:92px;bottom:0;width:76px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:10px 0 16px;gap:4px;z-index:48;overflow-y:auto;overflow-x:hidden}
+.sb-btn{position:relative;width:60px;height:auto;border:none;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px 6px;transition:all .15s;color:#fff;flex-shrink:0}
 .sb-btn::before{content:'';position:absolute;inset:0;border-radius:10px;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.1)}
 .sb-btn:hover::before{opacity:1}
 .sb-btn:active{transform:scale(.92)}
-.sb-btn svg{width:20px;height:20px;pointer-events:none}
-.sb-btn .sb-tip{position:absolute;left:54px;top:50%;transform:translateY(-50%);background:#1e2235;color:var(--text);font-size:.68rem;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;border:1px solid var(--border);z-index:100}
-.sb-btn:hover .sb-tip{opacity:1}
-.sb-divider{width:28px;height:1px;background:var(--border);margin:4px 0;flex-shrink:0}
+.sb-btn svg{width:18px;height:18px;pointer-events:none;flex-shrink:0}
+.sb-btn .sb-lbl{font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1;pointer-events:none;white-space:nowrap}
+.sb-divider{width:32px;height:1px;background:var(--border);margin:2px 0;flex-shrink:0}
 @media(max-width:768px){.sidebar{display:none}}
 
 /* ── FAB (mobile) ── */
@@ -430,28 +429,28 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 <!-- Sidebar Controls (desktop) -->
 <aside class="sidebar" id="sidebar">
  <button class="sb-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')">
-  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg><span class="sb-tip">Start</span>
+  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg><span class="sb-lbl">Start</span>
  </button>
  <button class="sb-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')">
-  <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><span class="sb-tip">Stop</span>
+  <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><span class="sb-lbl">Stop</span>
  </button>
  <div class="sb-divider"></div>
  <button class="sb-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="sb-tip">Auto</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="sb-lbl">Auto</span>
  </button>
  <button class="sb-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="sb-tip">Manual</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 00-4 0"/><path d="M14 10V4a2 2 0 00-4 0v6"/><path d="M10 9.5V5a2 2 0 00-4 0v9"/><path d="M18 11a2 2 0 014 0v3a8 8 0 01-8 8h-2c-2.5 0-3.8-.5-5.5-2L4 16.5a2 2 0 013-2.5L8 15"/></svg><span class="sb-lbl">Manual</span>
  </button>
  <div class="sb-divider"></div>
  <button class="sb-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg><span class="sb-tip">Xfer Close</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg><span class="sb-lbl">Xfer On</span>
  </button>
  <button class="sb-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="sb-tip">Xfer Open</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="sb-lbl">Xfer Off</span>
  </button>
  <div class="sb-divider"></div>
  <button class="sb-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg><span class="sb-tip">Reset</span>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg><span class="sb-lbl">Reset</span>
  </button>
 </aside>
 
@@ -714,7 +713,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="fab-item"><span class="fab-label">Start</span><button class="fab-item-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?');closeFab()"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Stop</span><button class="fab-item-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Auto</span><button class="fab-item-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></button></div>
-  <div class="fab-item"><span class="fab-label">Manual</span><button class="fab-item-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Manual</span><button class="fab-item-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 00-4 0"/><path d="M14 10V4a2 2 0 00-4 0v6"/><path d="M10 9.5V5a2 2 0 00-4 0v9"/><path d="M18 11a2 2 0 014 0v3a8 8 0 01-8 8h-2c-2.5 0-3.8-.5-5.5-2L4 16.5a2 2 0 013-2.5L8 15"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Xfer Close</span><button class="fab-item-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Xfer Open</span><button class="fab-item-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Reset</span><button class="fab-item-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button></div>
