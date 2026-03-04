@@ -102,6 +102,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── Layout ── */
 .main{max-width:1400px;margin:0 auto;padding:16px 20px 80px}
+@media(min-width:769px){.main{margin-left:62px;max-width:calc(1400px + 62px)}}
 .row{display:grid;gap:12px;margin-bottom:12px}
 .r-gauges{grid-template-columns:repeat(4,1fr)}
 .r-dual{grid-template-columns:1fr 1fr}
@@ -187,7 +188,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .io-item.on-amber{color:var(--text);background:#f59e0b0d;border-color:#f59e0b25}
 .io-item.on-amber .io-state{background:#f59e0b28;color:var(--orange)}
 
-/* ── Controls ── */
+/* ── Controls (shared button styles) ── */
 .ctrl-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
 .ctrl-btn{position:relative;border:none;border-radius:8px;padding:14px 10px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.04em;color:#fff;overflow:hidden}
 .ctrl-btn::before{content:'';position:absolute;inset:0;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.08)}
@@ -198,6 +199,33 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .btn-auto{background:linear-gradient(135deg,#2563eb,#3b82f6)}.btn-manual{background:linear-gradient(135deg,#d97706,#f59e0b);color:#000}
 .btn-gen-on{background:linear-gradient(135deg,#0d9488,#14b8a6)}.btn-gen-off{background:linear-gradient(135deg,#9f1239,#e11d48)}
 .btn-reset{background:linear-gradient(135deg,#7c3aed,#a855f7)}
+
+/* ── Sidebar (desktop) ── */
+.sidebar{position:fixed;left:0;top:52px;bottom:0;width:62px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0 16px;gap:6px;z-index:48;overflow-y:auto;overflow-x:hidden}
+.sb-btn{position:relative;width:44px;height:44px;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:#fff;flex-shrink:0}
+.sb-btn::before{content:'';position:absolute;inset:0;border-radius:10px;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.1)}
+.sb-btn:hover::before{opacity:1}
+.sb-btn:active{transform:scale(.92)}
+.sb-btn svg{width:20px;height:20px;pointer-events:none}
+.sb-btn .sb-tip{position:absolute;left:54px;top:50%;transform:translateY(-50%);background:#1e2235;color:var(--text);font-size:.68rem;font-weight:600;padding:4px 10px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;border:1px solid var(--border);z-index:100}
+.sb-btn:hover .sb-tip{opacity:1}
+.sb-divider{width:28px;height:1px;background:var(--border);margin:4px 0;flex-shrink:0}
+@media(max-width:768px){.sidebar{display:none}}
+
+/* ── FAB (mobile) ── */
+.fab-wrap{display:none;position:fixed;right:16px;bottom:20px;z-index:200;flex-direction:column-reverse;align-items:center;gap:0}
+.fab-toggle{width:52px;height:52px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--blue),var(--cyan));color:#fff;box-shadow:0 4px 20px rgba(0,0,0,.4);transition:transform .2s;z-index:201}
+.fab-toggle:hover{transform:scale(1.05)}
+.fab-toggle.open{transform:rotate(45deg)}
+.fab-toggle svg{width:24px;height:24px;pointer-events:none}
+.fab-menu{display:flex;flex-direction:column-reverse;align-items:center;gap:8px;padding-bottom:12px;opacity:0;pointer-events:none;transform:translateY(10px);transition:opacity .2s,transform .2s}
+.fab-wrap.open .fab-menu{opacity:1;pointer-events:auto;transform:translateY(0)}
+.fab-item{display:flex;align-items:center;gap:8px}
+.fab-item-btn{width:42px;height:42px;border:none;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);transition:transform .12s}
+.fab-item-btn:active{transform:scale(.9)}
+.fab-item-btn svg{width:18px;height:18px;pointer-events:none}
+.fab-label{background:#1e2235;color:var(--text);font-size:.65rem;font-weight:600;padding:3px 8px;border-radius:5px;white-space:nowrap;border:1px solid var(--border)}
+@media(max-width:768px){.fab-wrap{display:flex}}
 .ctrl-btn .btn-ico{font-size:1.2rem;display:block;margin-bottom:4px}
 
 /* ── Confirmation modal ── */
@@ -399,6 +427,34 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  </div>
 </nav>
 
+<!-- Sidebar Controls (desktop) -->
+<aside class="sidebar" id="sidebar">
+ <button class="sb-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')">
+  <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg><span class="sb-tip">Start</span>
+ </button>
+ <button class="sb-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')">
+  <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><span class="sb-tip">Stop</span>
+ </button>
+ <div class="sb-divider"></div>
+ <button class="sb-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="sb-tip">Auto</span>
+ </button>
+ <button class="sb-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><span class="sb-tip">Manual</span>
+ </button>
+ <div class="sb-divider"></div>
+ <button class="sb-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg><span class="sb-tip">Xfer Close</span>
+ </button>
+ <button class="sb-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="sb-tip">Xfer Open</span>
+ </button>
+ <div class="sb-divider"></div>
+ <button class="sb-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg><span class="sb-tip">Reset</span>
+ </button>
+</aside>
+
 <main class="main">
 
 <div class="section active" id="sec-monitor">
@@ -490,24 +546,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 </div><!-- /sec-monitor -->
 
 <div class="section" id="sec-config">
-<!-- Controls -->
-<div class="row r-full">
- <div class="card">
-  <div class="card-hd"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg><h2>Controls</h2></div>
-  <div class="card-body">
-   <div class="ctrl-grid">
-    <button class="ctrl-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')"><span class="btn-ico">&#9654;</span>Start</button>
-    <button class="ctrl-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')"><span class="btn-ico">&#9632;</span>Stop</button>
-    <button class="ctrl-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')"><span class="btn-ico">&#8635;</span>Auto</button>
-    <button class="ctrl-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')"><span class="btn-ico">&#9881;</span>Manual</button>
-    <button class="ctrl-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')"><span class="btn-ico">&#9889;</span>Xfer Close</button>
-    <button class="ctrl-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')"><span class="btn-ico">&#9675;</span>Xfer Open</button>
-    <button class="ctrl-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')"><span class="btn-ico">&#8634;</span>Reset</button>
-   </div>
-  </div>
- </div>
-</div>
-
 <!-- Board Relays -->
 <div class="row r-full" id="relaySection" style="display:none">
  <div class="card">
@@ -666,6 +704,22 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 </div>
 </div><!-- /sec-history -->
 </main>
+
+<!-- FAB Controls (mobile) -->
+<div class="fab-wrap" id="fabWrap">
+ <button class="fab-toggle" id="fabToggle" onclick="toggleFab()">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg>
+ </button>
+ <div class="fab-menu" id="fabMenu">
+  <div class="fab-item"><span class="fab-label">Start</span><button class="fab-item-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?');closeFab()"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Stop</span><button class="fab-item-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Auto</span><button class="fab-item-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Manual</span><button class="fab-item-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Xfer Close</span><button class="fab-item-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Xfer Open</span><button class="fab-item-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Reset</span><button class="fab-item-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button></div>
+ </div>
+</div>
 
 <!-- Confirm Modal -->
 <div class="modal-overlay" id="confirmModal">
@@ -1194,6 +1248,25 @@ function pinOk(){var v=getPinVal();if(v.length!==4){document.getElementById('pin
 updateLockBtn();
 
 
+
+/* ── FAB toggle ── */
+function toggleFab(){
+ var w=document.getElementById('fabWrap');
+ var b=document.getElementById('fabToggle');
+ w.classList.toggle('open');
+ b.classList.toggle('open');
+}
+function closeFab(){
+ var w=document.getElementById('fabWrap');
+ var b=document.getElementById('fabToggle');
+ w.classList.remove('open');
+ b.classList.remove('open');
+}
+// Close FAB when tapping outside
+document.addEventListener('click',function(e){
+ var w=document.getElementById('fabWrap');
+ if(w&&w.classList.contains('open')&&!w.contains(e.target))closeFab();
+});
 
 /* ── Init ── */
 initGauges();initPanels();updateTempUnits();poll();setInterval(poll,2500);
