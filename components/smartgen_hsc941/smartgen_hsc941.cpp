@@ -354,6 +354,30 @@ bool SmartgenHSC941::write_coil(uint16_t coil_address, bool value) {
 }
 
 // ============================================================
+//  Read Config Parameter Block (registers 0x0042-0x00E9)
+// ============================================================
+bool SmartgenHSC941::read_config_block(uint16_t *data) {
+  // 168 registers total, split into two reads of 84 each
+  static const uint16_t CFG_START = 0x0042;
+  static const uint16_t HALF = 84;
+
+  if (!this->read_holding_registers_(CFG_START, HALF, data)) {
+    ESP_LOGW(TAG, "Config read failed (block 1: 0x%04X-0x%04X)", CFG_START, CFG_START + HALF - 1);
+    return false;
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(INTER_FRAME_DELAY_MS));
+
+  if (!this->read_holding_registers_(CFG_START + HALF, HALF, data + HALF)) {
+    ESP_LOGW(TAG, "Config read failed (block 2: 0x%04X-0x%04X)",
+             CFG_START + HALF, CFG_START + 2 * HALF - 1);
+    return false;
+  }
+
+  return true;
+}
+
+// ============================================================
 //  Publish Coil Bit to Binary Sensor
 // ============================================================
 void SmartgenHSC941::publish_coil_bit_(binary_sensor::BinarySensor *bs,

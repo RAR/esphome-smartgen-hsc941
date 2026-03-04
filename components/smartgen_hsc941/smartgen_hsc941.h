@@ -52,6 +52,10 @@ class SmartgenHSC941 : public PollingComponent {
   void build_binary_sensors_json(std::string &output);
   void build_status_json(std::string &output);
 
+  // Read config parameter registers (0x0042-0x00E9, 168 regs) on demand
+  // Returns true if all reads succeed.  data[] must hold at least 168 uint16_t.
+  bool read_config_block(uint16_t *data);
+
   // Communication health
   bool is_connected() const { return this->comm_failures_ < MAX_FAILURES; }
 

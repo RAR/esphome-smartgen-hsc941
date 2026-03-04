@@ -391,6 +391,31 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .pin-ok{background:var(--blue);color:#fff}.pin-cn{background:var(--faint);color:var(--text)}
 .pin-msg{font-size:.7rem;color:var(--red);margin-top:8px;min-height:16px}
 
+/* ── Controller Config Viewer ── */
+.cfg-hint{font-size:.75rem;color:var(--dim);margin:0 0 12px;line-height:1.45}
+.cfg-status{font-size:.68rem;font-weight:600;letter-spacing:.03em}
+.cfg-status.loading{color:var(--orange)}
+.cfg-status.ok{color:var(--green)}
+.cfg-status.err{color:var(--red)}
+.cfg-grp{margin-bottom:12px}
+.cfg-grp-hd{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);padding:6px 0 4px;border-bottom:1px solid var(--border);margin-bottom:2px}
+.cfg-tbl{width:100%;border-collapse:collapse;font-size:.73rem}
+.cfg-tbl td{padding:4px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.cfg-tbl tr:last-child td{border-bottom:none}
+.cfg-tbl .cfg-name{color:var(--text);min-width:160px}
+.cfg-tbl .cfg-val{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.cfg-tbl .cfg-unit{color:var(--dim);padding-left:2px;font-weight:400;font-size:.65rem}
+.cfg-tbl .cfg-reg{color:var(--faint);font-size:.6rem;text-align:right;font-variant-numeric:tabular-nums;width:50px}
+.cfg-raw-toggle{font-size:.68rem;color:var(--dim);cursor:pointer;padding:8px 0 2px;display:inline-block;border:none;background:none;text-decoration:underline}
+.cfg-raw-toggle:hover{color:var(--accent)}
+.cfg-raw{display:none;margin-top:6px}
+.cfg-raw.show{display:block}
+.cfg-raw-tbl{width:100%;border-collapse:collapse;font-size:.62rem;font-family:monospace}
+.cfg-raw-tbl td{padding:2px 6px;border-bottom:1px solid var(--border)}
+.cfg-raw-tbl .rr-addr{color:var(--dim);width:55px}
+.cfg-raw-tbl .rr-hex{color:var(--cyan);width:50px;text-align:right}
+.cfg-raw-tbl .rr-dec{text-align:right;width:50px}
+
 </style>
 </head>
 <body>
@@ -419,6 +444,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  <div class="nav-tabs">
   <button class="nav-tab active" data-sec="monitor" onclick="switchSec('monitor')">Monitoring</button>
   <button class="nav-tab" data-sec="config" onclick="switchSec('config')">Configuration</button>
+  <button class="nav-tab" data-sec="controller" onclick="switchSec('controller')">Controller</button>
   <button class="nav-tab" data-sec="history" onclick="switchSec('history')">History</button>
  </div>
  <div class="env-bar" id="envBar">
@@ -644,6 +670,25 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
  </div>
 </div>
 </div><!-- /sec-config -->
+
+<div class="section" id="sec-controller">
+<div class="row r-full">
+ <div class="card">
+  <div class="card-hd">
+   <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></svg>
+   <h2>Controller Parameters</h2>
+   <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <span class="cfg-status" id="cfgStatus"></span>
+    <button class="ex-btn ex-btn-save" onclick="loadCfg()">Read from Controller</button>
+   </div>
+  </div>
+  <div class="card-body" id="cfgBody">
+   <p class="cfg-hint">Click <b>Read from Controller</b> to fetch the HSC941 parameter block over Modbus.  These values are read-only&mdash;parameters can only be changed via the controller front panel or USB PC software.</p>
+   <div id="cfgContent"></div>
+  </div>
+ </div>
+</div>
+</div><!-- /sec-controller -->
 
 <div class="section" id="sec-history">
 <!-- Runtime -->
@@ -1464,8 +1509,178 @@ function renderRuntimeChart(days){
   if(days.length<=14||i%Math.ceil(days.length/7)===0)h+='<text x="'+(x+bw/2)+'" y="'+(H-4)+'" fill="#6b7394" font-size="8" text-anchor="middle">'+d.d.slice(5)+'</text>';});
  svg.innerHTML=h;}
 
+/* ── Controller Config Viewer ── */
+const CFG_START=0x42;
+const CFG_MAP=[
+ // Timing (params 1-15)
+ {a:0x50,n:'Start Delay',u:'s',s:10,g:'Timing'},
+ {a:0x51,n:'Stop Delay',u:'s',s:10,g:'Timing'},
+ {a:0x52,n:'Start Attempts',u:'',s:1,g:'Timing'},
+ {a:0x53,n:'Preheat Time',u:'s',s:10,g:'Timing'},
+ {a:0x54,n:'Choke Time',u:'s',s:10,g:'Timing'},
+ {a:0x55,n:'Cranking Time',u:'s',s:10,g:'Timing'},
+ {a:0x56,n:'Crank Rest Time',u:'s',s:10,g:'Timing'},
+ {a:0x57,n:'Safety On Delay',u:'s',s:10,g:'Timing'},
+ {a:0x58,n:'Start Idle Time',u:'s',s:10,g:'Timing'},
+ {a:0x59,n:'Warm-up Time',u:'s',s:10,g:'Timing'},
+ {a:0x5A,n:'Cooling Time',u:'s',s:10,g:'Timing'},
+ {a:0x5B,n:'Stop Idle Time',u:'s',s:10,g:'Timing'},
+ {a:0x5C,n:'ETS Hold Time',u:'s',s:10,g:'Timing'},
+ {a:0x5D,n:'After Stop Time',u:'s',s:10,g:'Timing'},
+ {a:0x5E,n:'Switch On Delay',u:'s',s:10,g:'Timing'},
+ // Electrical (params 16-18)
+ {a:0x5F,n:'Flywheel Teeth',u:'',s:1,g:'Electrical'},
+ {a:0x60,n:'Generator Poles',u:'',s:1,g:'Electrical'},
+ {a:0x61,n:'Gen Abnormal Delay',u:'s',s:10,g:'Electrical'},
+ // Protection (params 19-24)
+ {a:0x62,n:'Gen Over Voltage',u:'V',s:1,g:'Protection'},
+ {a:0x63,n:'Gen Under Voltage',u:'V',s:1,g:'Protection'},
+ {a:0x64,n:'Under Speed',u:'RPM',s:1,g:'Protection'},
+ {a:0x65,n:'Over Speed',u:'RPM',s:1,g:'Protection'},
+ {a:0x66,n:'Under Frequency',u:'Hz',s:10,g:'Protection'},
+ {a:0x67,n:'Over Frequency',u:'Hz',s:10,g:'Protection'},
+ // Sensor shutdown thresholds (params 25-27)
+ {a:0x68,n:'High Water Temp Shutdown',u:'\u00b0C',s:1,g:'Sensor Thresholds'},
+ {a:0x69,n:'Low Oil Pressure Shutdown',u:'kPa',s:1,g:'Sensor Thresholds'},
+ {a:0x6A,n:'Aux Sensor Shutdown',u:'',s:1,g:'Sensor Thresholds'},
+ // Speed (params 28-29)
+ {a:0x6B,n:'Speed Signal Delay',u:'s',s:10,g:'Speed'},
+ {a:0x6C,n:'Rated Speed',u:'RPM',s:1,g:'Speed'},
+ // Battery (params 35-37, x10)
+ {a:0x72,n:'Charging Failure Voltage',u:'V',s:10,g:'Battery'},
+ {a:0x73,n:'Battery Over Voltage',u:'V',s:10,g:'Battery'},
+ {a:0x74,n:'Battery Under Voltage',u:'V',s:10,g:'Battery'},
+ // Governor / PID (params 38-47)
+ {a:0x75,n:'Starting Angle',u:'\u00b0',s:1,g:'Governor / PID'},
+ {a:0x76,n:'Crank Disconnect Angle',u:'\u00b0',s:1,g:'Governor / PID'},
+ {a:0x77,n:'P Gain',u:'',s:1,g:'Governor / PID'},
+ {a:0x78,n:'I Gain',u:'',s:1,g:'Governor / PID'},
+ {a:0x79,n:'D Gain',u:'',s:1,g:'Governor / PID'},
+ {a:0x7A,n:'Overall Gain',u:'',s:1,g:'Governor / PID'},
+ {a:0x7B,n:'Gain Window',u:'',s:1,g:'Governor / PID'},
+ {a:0x7C,n:'Window Gain',u:'',s:1,g:'Governor / PID'},
+ {a:0x7D,n:'Position Gain',u:'',s:1,g:'Governor / PID'},
+ {a:0x7E,n:'Compensation Gain',u:'',s:1,g:'Governor / PID'},
+ // Aux Outputs (params 48-50+)
+ {a:0x7F,n:'Aux Output 1 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x80,n:'Aux Output 2 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x81,n:'Aux Output 3 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x82,n:'Aux Output 4 Function',u:'',s:1,g:'Aux I/O'},
+ // Crank Disconnect (params 51-56)
+ {a:0x95,n:'Crank Disc. Voltage',u:'V',s:1,g:'Crank Disconnect'},
+ {a:0x96,n:'Crank Disc. Frequency',u:'Hz',s:10,g:'Crank Disconnect'},
+ {a:0x97,n:'Crank Disc. Oil Press.',u:'kPa',s:1,g:'Crank Disconnect'},
+ {a:0x98,n:'Crank Disc. Speed',u:'RPM',s:1,g:'Crank Disconnect'},
+ {a:0x99,n:'Crank Disc. Param 55',u:'',s:1,g:'Crank Disconnect'},
+ {a:0x9A,n:'Crank Disc. Param 56',u:'',s:1,g:'Crank Disconnect'},
+ // Misc (params 57-61)
+ {a:0x9B,n:'Voltage Input Mode',u:'',s:1,g:'Misc'},
+ {a:0x9C,n:'Idling Speed',u:'RPM',s:1,g:'Misc'},
+ {a:0x9D,n:'Idle Slope',u:'',s:1,g:'Misc'},
+ {a:0x9E,n:'Idle Gain',u:'',s:1,g:'Misc'},
+ {a:0x9F,n:'Controller Address',u:'',s:1,g:'Misc'},
+ // Sensor types (params 80-87)
+ {a:0xB0,n:'Water Temp Sensor Type',u:'',s:1,g:'Sensor Types'},
+ {a:0xB1,n:'Oil Pressure Sensor Type',u:'',s:1,g:'Sensor Types'},
+ {a:0xB2,n:'Aux Sensor Type',u:'',s:1,g:'Sensor Types'},
+ {a:0xB3,n:'Speed Input Type',u:'',s:1,g:'Sensor Types'},
+ {a:0xB4,n:'Voltage Input Type',u:'',s:1,g:'Sensor Types'},
+ {a:0xB5,n:'Sensor Type Param 86',u:'',s:1,g:'Sensor Types'},
+ {a:0xB6,n:'Sensor Type Param 87',u:'',s:1,g:'Sensor Types'},
+ {a:0xB7,n:'Sensor Type Param 88',u:'',s:1,g:'Sensor Types'},
+ // Sensor warnings (params 91-93)
+ {a:0xB8,n:'High Water Temp Warning',u:'\u00b0C',s:1,g:'Sensor Warnings'},
+ {a:0xB9,n:'Low Oil Pressure Warning',u:'kPa',s:1,g:'Sensor Warnings'},
+ {a:0xBA,n:'Aux Sensor Warning',u:'',s:1,g:'Sensor Warnings'},
+ // Additional
+ {a:0xBB,n:'Aux Input 6 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0xBC,n:'CT Change Ratio',u:'',s:1,g:'Electrical'},
+ {a:0xBD,n:'Full-load Current',u:'A',s:1,g:'Electrical'},
+ {a:0xBE,n:'Over Current',u:'%',s:1,g:'Protection'},
+ // Sensor calibration curves
+ {a:0xCD,n:'Water Temp R1',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xCE,n:'Water Temp R2',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xCF,n:'Water Temp R3',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xD0,n:'Water Temp R4',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xD1,n:'Water Temp R5',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xD2,n:'Water Temp R6',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xD3,n:'Water Temp R7',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xD4,n:'Water Temp R8',u:'\u2126',s:1,g:'Calibration: Water Temp'},
+ {a:0xD5,n:'Water Temp T1',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xD6,n:'Water Temp T2',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xD7,n:'Water Temp T3',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xD8,n:'Water Temp T4',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xD9,n:'Water Temp T5',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xDA,n:'Water Temp T6',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xDB,n:'Water Temp T7',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xDC,n:'Water Temp T8',u:'\u00b0C',s:1,g:'Calibration: Water Temp'},
+ {a:0xDD,n:'Oil Press. R1',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xDE,n:'Oil Press. R2',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xDF,n:'Oil Press. R3',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE0,n:'Oil Press. R4',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE1,n:'Oil Press. R5',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE2,n:'Oil Press. R6',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE3,n:'Oil Press. R7',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE4,n:'Oil Press. R8',u:'\u2126',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE5,n:'Oil Press. P1',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE6,n:'Oil Press. P2',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE7,n:'Oil Press. P3',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE8,n:'Oil Press. P4',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
+ {a:0xE9,n:'Oil Press. P5',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
+];
+
+let cfgData=null;
+function loadCfg(){
+ const st=document.getElementById('cfgStatus');
+ st.textContent='Reading\u2026';st.className='cfg-status loading';
+ fetch('/api/config').then(r=>r.json()).then(d=>{
+  if(!d.ok){st.textContent=d.error||'Read failed';st.className='cfg-status err';return;}
+  cfgData=d;
+  st.textContent='OK';st.className='cfg-status ok';
+  renderCfg(d);
+ }).catch(()=>{st.textContent='Error';st.className='cfg-status err';});
+}
+function cfgVal(raw,scale){
+ if(scale>1)return(raw/scale).toFixed(scale===10?1:2);
+ return String(raw);
+}
+function renderCfg(d){
+ const start=d.start,data=d.data;
+ // Build grouped parameter display
+ const groups={};
+ CFG_MAP.forEach(p=>{
+  const idx=p.a-start;
+  if(idx<0||idx>=data.length)return;
+  if(!groups[p.g])groups[p.g]=[];
+  groups[p.g].push({name:p.n,val:cfgVal(data[idx],p.s),unit:p.u,addr:p.a,raw:data[idx]});
+ });
+ let h='';
+ for(const g in groups){
+  h+='<div class="cfg-grp"><div class="cfg-grp-hd">'+g+'</div><table class="cfg-tbl">';
+  groups[g].forEach(r=>{
+   h+='<tr><td class="cfg-name">'+r.name+'</td><td class="cfg-val">'+r.val;
+   if(r.unit)h+='<span class="cfg-unit"> '+r.unit+'</span>';
+   h+='</td><td class="cfg-reg">0x'+r.addr.toString(16).toUpperCase().padStart(4,'0')+'</td></tr>';
+  });
+  h+='</table></div>';
+ }
+ // Raw register dump toggle
+ h+='<button class="cfg-raw-toggle" onclick="this.nextElementSibling.classList.toggle(\'show\')">Show/Hide All Registers</button>';
+ h+='<div class="cfg-raw"><table class="cfg-raw-tbl">';
+ for(let i=0;i<data.length;i++){
+  const addr=start+i;
+  const mapped=CFG_MAP.find(p=>p.a===addr);
+  h+='<tr><td class="rr-addr">0x'+addr.toString(16).toUpperCase().padStart(4,'0')+'</td>';
+  h+='<td class="rr-hex">0x'+data[i].toString(16).toUpperCase().padStart(4,'0')+'</td>';
+  h+='<td class="rr-dec">'+data[i]+'</td>';
+  h+='<td>'+(mapped?mapped.n:'')+'</td></tr>';
+ }
+ h+='</table></div>';
+ document.getElementById('cfgContent').innerHTML=h;
+}
+
 /* ── Multi-language ── */
-const I18N={es:{'Monitoring':'Monitoreo','Configuration':'Configuraci\u00f3n','History':'Historial','Controls':'Controles','Generator Output':'Salida Generador','Engine':'Motor','Alarms':'Alarmas','Inputs / Outputs':'E/S','Fuel Estimate':'Combustible','Exercise Schedule':'Ejercicio','Relay Thermostat':'Termostato','Maintenance Tracker':'Mantenimiento','Runtime &amp; Totals':'Totales','Runtime History':'Historial Ejecuci\u00f3n','Event Log':'Registro','Board Relays':'Rel\u00e9s'},fr:{'Monitoring':'Surveillance','Configuration':'Configuration','History':'Historique','Controls':'Commandes','Generator Output':'Sortie G\u00e9n\u00e9rateur','Engine':'Moteur','Alarms':'Alarmes','Inputs / Outputs':'E/S','Fuel Estimate':'Carburant','Exercise Schedule':'Exercice','Relay Thermostat':'Thermostat','Maintenance Tracker':'Maintenance','Runtime &amp; Totals':'Totaux','Runtime History':'Historique','Event Log':'Journal','Board Relays':'Relais'}};
+const I18N={es:{'Monitoring':'Monitoreo','Configuration':'Configuraci\u00f3n','Controller':'Controlador','History':'Historial','Controls':'Controles','Generator Output':'Salida Generador','Engine':'Motor','Alarms':'Alarmas','Inputs / Outputs':'E/S','Fuel Estimate':'Combustible','Exercise Schedule':'Ejercicio','Relay Thermostat':'Termostato','Maintenance Tracker':'Mantenimiento','Controller Parameters':'Par\u00e1metros del Controlador','Runtime &amp; Totals':'Totales','Runtime History':'Historial Ejecuci\u00f3n','Event Log':'Registro','Board Relays':'Rel\u00e9s'},fr:{'Monitoring':'Surveillance','Configuration':'Configuration','Controller':'Contr\u00f4leur','History':'Historique','Controls':'Commandes','Generator Output':'Sortie G\u00e9n\u00e9rateur','Engine':'Moteur','Alarms':'Alarmes','Inputs / Outputs':'E/S','Fuel Estimate':'Carburant','Exercise Schedule':'Exercice','Relay Thermostat':'Thermostat','Maintenance Tracker':'Maintenance','Controller Parameters':'Param\u00e8tres Contr\u00f4leur','Runtime &amp; Totals':'Totaux','Runtime History':'Historique','Event Log':'Journal','Board Relays':'Relais'}};
 let i18nDone=false;
 function applyI18n(lang){if(i18nDone||!lang||lang==='en')return;const t=I18N[lang];if(!t)return;i18nDone=true;
  document.querySelectorAll('.nav-tab').forEach(e=>{const k=e.textContent.trim();if(t[k])e.textContent=t[k];});
@@ -2685,6 +2900,15 @@ void SmartgenHSC941Web::start_server_() {
       .user_ctx = this,
   };
   httpd_register_uri_handler(this->server_, &buzzer_post_uri);
+
+  // Controller config (read-only, on-demand)
+  httpd_uri_t config_get_uri = {
+      .uri = "/api/config",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_config_get_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &config_get_uri);
 }
 
 void SmartgenHSC941Web::stop_server_() {
@@ -3772,6 +3996,55 @@ esp_err_t SmartgenHSC941Web::handle_api_buzzer_post_(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *resp = ok ? R"({"ok":true})" : R"({"ok":false})";
   return httpd_resp_send(req, resp, strlen(resp));
+}
+
+// ============================================================
+//  /api/config — read controller config registers on demand
+// ============================================================
+esp_err_t SmartgenHSC941Web::handle_api_config_get_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self || !self->controller_) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+  if (!self->controller_->is_connected()) {
+    const char *err = R"({"ok":false,"error":"Controller offline"})";
+    httpd_resp_set_type(req, "application/json");
+    return httpd_resp_send(req, err, strlen(err));
+  }
+
+  static const uint16_t CFG_START = 0x0042;
+  static const uint16_t CFG_COUNT = 168;
+  uint16_t data[CFG_COUNT];
+
+  bool ok = self->controller_->read_config_block(data);
+
+  // Build JSON: {"ok":true,"start":66,"count":168,"data":[v0,v1,...]}
+  std::string json;
+  json.reserve(1200);
+  json += "{\"ok\":";
+  json += ok ? "true" : "false";
+  if (ok) {
+    char num[8];
+    snprintf(num, sizeof(num), "%u", CFG_START);
+    json += ",\"start\":";
+    json += num;
+    snprintf(num, sizeof(num), "%u", CFG_COUNT);
+    json += ",\"count\":";
+    json += num;
+    json += ",\"data\":[";
+    for (uint16_t i = 0; i < CFG_COUNT; i++) {
+      if (i > 0) json += ',';
+      json += std::to_string(data[i]);
+    }
+    json += ']';
+  }
+  json += '}';
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json.c_str(), json.size());
 }
 
 }  // namespace smartgen_hsc941_web

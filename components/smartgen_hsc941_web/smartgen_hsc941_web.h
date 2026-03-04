@@ -129,6 +129,7 @@ class SmartgenHSC941Web : public Component {
   static esp_err_t handle_api_runtime_history_(httpd_req_t *req);
   static esp_err_t handle_api_battery_history_(httpd_req_t *req);
   static esp_err_t handle_api_buzzer_post_(httpd_req_t *req);
+  static esp_err_t handle_api_config_get_(httpd_req_t *req);
 
   // Accessor for the controller
   smartgen_hsc941::SmartgenHSC941 *get_controller() { return this->controller_; }
