@@ -201,7 +201,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .btn-reset{background:linear-gradient(135deg,#7c3aed,#a855f7)}
 
 /* ── Sidebar (desktop) ── */
-.sidebar{position:fixed;left:0;top:52px;bottom:0;width:62px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0 16px;gap:6px;z-index:48;overflow-y:auto;overflow-x:hidden}
+.sidebar{position:fixed;left:0;top:92px;bottom:0;width:62px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:12px 0 16px;gap:6px;z-index:48;overflow-y:auto;overflow-x:hidden}
 .sb-btn{position:relative;width:44px;height:44px;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:#fff;flex-shrink:0}
 .sb-btn::before{content:'';position:absolute;inset:0;border-radius:10px;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.1)}
 .sb-btn:hover::before{opacity:1}
