@@ -867,8 +867,8 @@ function update(d){
  const sa=(id,on)=>{const e=document.getElementById(id);if(e)e.classList.toggle('active',!!on);};
  sa('sbAuto',b.auto_mode);sa('sbManual',b.manual_mode);
  sa('sbXferOn',b.on_load);sa('sbXferOff','on_load' in b&&!b.on_load);
- const eng=s.eng_status!=null&&s.eng_status>0;
- sa('sbStart',eng);sa('sbStop',b.stop_mode&&!eng);
+ const engRun=s.eng_status!=null&&s.eng_status>0;
+ sa('sbStart',engRun);sa('sbStop',b.stop_mode&&!engRun);
  // Gauges: prefer gen_va, fallback to first available
  const vavg=(s.gen_va!==null&&s.gen_va!==undefined)?s.gen_va:null;
  G.volt.set(vavg);G.freq.set(s.gen_freq!=null?s.gen_freq:null);
