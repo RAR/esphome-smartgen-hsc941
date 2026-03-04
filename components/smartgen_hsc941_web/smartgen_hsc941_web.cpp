@@ -479,6 +479,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
    <div class="fuel-bar-outer"><div class="fuel-bar-inner" id="fuelBar"></div><div class="fuel-bar-text" id="fuelPct">--</div></div>
    <div class="fuel-stats" id="fuelStats">
     <div class="fuel-stat" id="fuelRemainStat">Remaining: <span id="fuelRemain">--</span> <span id="fuelVolUnit">L</span></div>
+    <div class="fuel-stat" id="fuelRateStat" style="display:none">Burn Rate: <span id="fuelRate">--</span> <span id="fuelRateUnit">lph</span></div>
     <div class="fuel-stat" id="fuelRuntimeStat">Est. Runtime: <span id="fuelRuntime">--</span> h</div>
     <div class="fuel-stat" id="fuelTankStat">Tank: <span id="fuelTank">--</span> <span id="fuelTankUnit">L</span></div>
     <button class="evtlog-clear" style="margin-left:auto" id="fuelFillBtn" onclick="fillTank()">Mark Filled</button>
@@ -1308,7 +1309,7 @@ async function exportAllConfig(){
    exercise:{enabled:ex.enabled,day:ex.day,hour:ex.hour,minute:ex.minute,duration:ex.duration,load_transfer:ex.load_transfer},
    thermostat:(th.relays||[]).map(r=>({idx:r.idx,name:r.name,enabled:r.enabled,sensor:r.sensor,on_below:r.on_below,off_above:r.off_above})),
    maintenance:{items:mt.items||[],total_hours:mt.total_hours||0},
-   fuel:{tank_size:fu.tank_size||0,burn_rate:fu.burn_rate||0}
+   fuel:{tank_size:fu.tank_size||0,rate_idle:fu.rate_idle||0,rate_full:fu.rate_full||0}
   };
   const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='genset_config_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);
@@ -1341,6 +1342,7 @@ function renderFuel(d){
  const isSensor=!!d.sensor;
  const fname=FUEL_NAMES[d.fuel_type]||d.fuel_type||'Fuel';
  const vu=d.vol_unit||'L';
+ const ru=d.rate_unit||'lph';
  const title=document.getElementById('fuelTitle');
  if(title)title.textContent=fname+(isSensor?' Level':' Estimate');
  const pct=Math.max(0,Math.min(100,d.pct||0));
@@ -1350,7 +1352,13 @@ function renderFuel(d){
  const rs=document.getElementById('fuelRemainStat');if(rs)rs.style.display=(d.tank_size>0)?'':'none';
  const r=document.getElementById('fuelRemain');if(r)r.textContent=(d.remain||0).toFixed(1);
  const rvu=document.getElementById('fuelVolUnit');if(rvu)rvu.textContent=vu;
- const rts=document.getElementById('fuelRuntimeStat');if(rts)rts.style.display=(d.burn_rate>0&&d.remain>0)?'':'none';
+ const hasRate=(d.eff_rate>0||d.rate_idle>0||d.rate_full>0);
+ const rateStat=document.getElementById('fuelRateStat');
+ if(rateStat){rateStat.style.display=hasRate?'':'none';}
+ const rateEl=document.getElementById('fuelRate');
+ if(rateEl&&hasRate)rateEl.textContent=(d.eff_rate||0).toFixed(1);
+ const rateU=document.getElementById('fuelRateUnit');if(rateU)rateU.textContent=ru;
+ const rts=document.getElementById('fuelRuntimeStat');if(rts)rts.style.display=(hasRate&&d.remain>0)?'':'none';
  const rt=document.getElementById('fuelRuntime');if(rt)rt.textContent=(d.est_hours||0).toFixed(1);
  const tks=document.getElementById('fuelTankStat');if(tks)tks.style.display=(d.tank_size>0)?'':'none';
  const tk=document.getElementById('fuelTank');if(tk)tk.textContent=(d.tank_size||0).toFixed(0);
@@ -1438,6 +1446,23 @@ void SmartgenHSC941Web::loop() {
   }
 }
 
+float SmartgenHSC941Web::get_effective_burn_rate() const {
+  float idle = this->burn_rate_idle_;
+  float full = this->burn_rate_full_;
+  if (idle <= 0 && full <= 0)
+    return 0;
+  float load_pct = 0;
+  if (this->controller_) {
+    auto *s = this->controller_->get_output_load_percent_sensor();
+    if (s && s->has_state() && !std::isnan(s->state)) {
+      load_pct = s->state;
+      if (load_pct < 0) load_pct = 0;
+      if (load_pct > 100) load_pct = 100;
+    }
+  }
+  return idle + (full - idle) * (load_pct / 100.0f);
+}
+
 void SmartgenHSC941Web::dump_config() {
   ESP_LOGCONFIG(TAG, "SmartGen HSC941 Web UI:");
   ESP_LOGCONFIG(TAG, "  Port: %u", this->port_);
@@ -1455,7 +1480,11 @@ void SmartgenHSC941Web::dump_config() {
                   this->exercise_cfg_.duration_min);
   }
   if (this->tank_size_liters_ > 0) {
-    ESP_LOGCONFIG(TAG, "  Fuel: %.0fL tank, %.1f L/h burn rate", this->tank_size_liters_, this->burn_rate_lph_);
+    const char *u = (this->fuel_unit_ == "gph") ? "gal" : "L";
+    const char *ru = (this->fuel_unit_ == "gph") ? "gph" : "lph";
+    ESP_LOGCONFIG(TAG, "  Fuel: %.0f%s tank, %s, idle %.2f %s, full %.2f %s",
+                  this->tank_size_liters_, u, this->fuel_type_.c_str(),
+                  this->burn_rate_idle_, ru, this->burn_rate_full_, ru);
   }
   ESP_LOGCONFIG(TAG, "  Language: %s", this->language_.c_str());
   if (this->mains_sensor_) {
@@ -3378,7 +3407,33 @@ esp_err_t SmartgenHSC941Web::handle_api_fuel_get_(httpd_req_t *req) {
   const auto &ftype = self->get_fuel_type();
   const auto &funit = self->get_fuel_unit();
   const char *vol_unit = (funit == "gph") ? "gal" : "L";
-  const char *rate_unit = (funit == "gph") ? "gal/h" : "L/h";
+  const char *rate_unit = (funit == "gph") ? "gph" : "lph";
+
+  // Get current load percentage for burn rate interpolation
+  float load_pct = 0;
+  bool engine_on = false;
+  if (self->controller_) {
+    auto *load_s = self->controller_->get_output_load_percent_sensor();
+    if (load_s && load_s->has_state() && !std::isnan(load_s->state)) {
+      load_pct = load_s->state;
+      if (load_pct < 0) load_pct = 0;
+      if (load_pct > 100) load_pct = 100;
+    }
+    // Check if engine is running (engine_running_status > 0 means running)
+    auto *eng_s = self->controller_->get_engine_running_status_sensor();
+    if (eng_s && eng_s->has_state() && eng_s->state > 0) engine_on = true;
+  }
+
+  float rate_idle = self->get_burn_rate_idle();
+  float rate_full = self->get_burn_rate_full();
+  bool has_rates = (rate_idle > 0 || rate_full > 0);
+  // Effective burn rate: linear interpolation idle→full by load%
+  float eff_rate = 0;
+  if (has_rates && engine_on) {
+    eff_rate = rate_idle + (rate_full - rate_idle) * (load_pct / 100.0f);
+  } else if (has_rates) {
+    eff_rate = rate_idle;  // Engine off — show idle rate
+  }
 
   // Mode 1: Real fuel level sensor (e.g. Mopeka propane sensor → percentage)
   auto *fuel_sens = self->get_fuel_level_sensor();
@@ -3388,14 +3443,15 @@ esp_err_t SmartgenHSC941Web::handle_api_fuel_get_(httpd_req_t *req) {
     if (pct > 100) pct = 100;
     float tank = self->get_tank_size();
     float remain = (tank > 0) ? tank * pct / 100.0f : 0;
-    float rate = self->get_burn_rate();
-    float est_hours = (rate > 0 && remain > 0) ? remain / rate : 0;
+    float est_hours = (eff_rate > 0 && remain > 0) ? remain / eff_rate : 0;
 
     char json[512];
     snprintf(json, sizeof(json),
       "{\"sensor\":true,\"fuel_type\":\"%s\",\"vol_unit\":\"%s\",\"rate_unit\":\"%s\","
-      "\"tank_size\":%.1f,\"burn_rate\":%.2f,\"pct\":%.1f,\"remain\":%.1f,\"est_hours\":%.1f}",
-      ftype.c_str(), vol_unit, rate_unit, tank, rate, pct, remain, est_hours);
+      "\"tank_size\":%.1f,\"rate_idle\":%.2f,\"rate_full\":%.2f,\"eff_rate\":%.2f,\"load\":%.0f,"
+      "\"pct\":%.1f,\"remain\":%.1f,\"est_hours\":%.1f}",
+      ftype.c_str(), vol_unit, rate_unit, tank, rate_idle, rate_full, eff_rate, load_pct,
+      pct, remain, est_hours);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
@@ -3405,8 +3461,7 @@ esp_err_t SmartgenHSC941Web::handle_api_fuel_get_(httpd_req_t *req) {
 
   // Mode 2: Burn-rate estimation (fallback)
   float tank = self->get_tank_size();
-  float rate = self->get_burn_rate();
-  if (tank <= 0 || rate <= 0) {
+  if (tank <= 0 || !has_rates) {
     // Check if we have a fuel sensor configured but it hasn't reported yet
     if (fuel_sens) {
       char wjson[256];
@@ -3421,24 +3476,30 @@ esp_err_t SmartgenHSC941Web::handle_api_fuel_get_(httpd_req_t *req) {
     return httpd_resp_send(req, r, strlen(r));
   }
 
+  // For estimation mode, use average of idle+full as a rough rate for consumed calc
+  float avg_rate = (rate_idle + rate_full) / 2.0f;
+  if (avg_rate <= 0) avg_rate = rate_idle > 0 ? rate_idle : rate_full;
+
   float total_hrs = 0;
   if (self->controller_) {
     auto *s = self->controller_->get_total_hours_sensor();
     if (s && s->has_state()) total_hrs = s->state;
   }
 
-  float consumed = (total_hrs - self->get_last_fill_hours()) * rate;
+  float consumed = (total_hrs - self->get_last_fill_hours()) * avg_rate;
   if (consumed < 0) consumed = 0;
   float remain = tank - consumed;
   if (remain < 0) remain = 0;
   float pct = (remain / tank) * 100.0f;
-  float est_hours = (rate > 0) ? remain / rate : 0;
+  float est_hours = (eff_rate > 0) ? remain / eff_rate : (avg_rate > 0 ? remain / avg_rate : 0);
 
   char json[512];
   snprintf(json, sizeof(json),
     "{\"fuel_type\":\"%s\",\"vol_unit\":\"%s\",\"rate_unit\":\"%s\","
-    "\"tank_size\":%.1f,\"burn_rate\":%.2f,\"pct\":%.1f,\"remain\":%.1f,\"est_hours\":%.1f,\"consumed\":%.1f}",
-    ftype.c_str(), vol_unit, rate_unit, tank, rate, pct, remain, est_hours, consumed);
+    "\"tank_size\":%.1f,\"rate_idle\":%.2f,\"rate_full\":%.2f,\"eff_rate\":%.2f,\"load\":%.0f,"
+    "\"pct\":%.1f,\"remain\":%.1f,\"est_hours\":%.1f,\"consumed\":%.1f}",
+    ftype.c_str(), vol_unit, rate_unit, tank, rate_idle, rate_full, eff_rate, load_pct,
+    pct, remain, est_hours, consumed);
 
   httpd_resp_set_type(req, "application/json");
   httpd_resp_set_hdr(req, "Cache-Control", "no-cache");

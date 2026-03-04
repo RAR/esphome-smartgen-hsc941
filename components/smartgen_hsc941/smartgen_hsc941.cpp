@@ -454,17 +454,19 @@ void SmartgenHSC941::process_register_data_(const uint16_t *data,
     return val;
   };
 
-  // Helper: publish if sensor exists and value is valid (not 32766 = no data)
+  // Helper: publish if sensor exists and value is valid
   auto pub = [](sensor::Sensor *s, float value) {
     if (s != nullptr)
       s->publish_state(value);
   };
 
+  // SmartGen uses several sentinel values for "no data / sensor not connected":
+  //   0x7FFE (32766), 0x7FFF (32767), 0xFFFF (65535)
   auto pub_if_valid = [&pub](sensor::Sensor *s, uint16_t raw, float ratio) {
     if (s == nullptr)
       return;
-    if (raw == 32766) {
-      s->publish_state(NAN);  // No valid data
+    if (raw == 0x7FFE || raw == 0x7FFF || raw == 0xFFFF) {
+      s->publish_state(NAN);  // No valid data / sensor not connected
       return;
     }
     pub(s, (float) raw * ratio);
@@ -473,7 +475,8 @@ void SmartgenHSC941::process_register_data_(const uint16_t *data,
   auto pub_signed = [&pub](sensor::Sensor *s, int16_t raw, float ratio) {
     if (s == nullptr)
       return;
-    if (raw == 32766 || raw == -32768) {
+    // 0x7FFE (32766), 0x7FFF (32767), 0x8000 (-32768) = sentinels
+    if (raw == 32766 || raw == 32767 || raw == -32768) {
       s->publish_state(NAN);
       return;
     }

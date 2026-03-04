@@ -89,7 +89,8 @@ class SmartgenHSC941Web : public Component {
   void set_ambient_humidity_name(const std::string &n) { this->ambient_humidity_name_ = n; }
   void set_single_phase(bool v) { this->single_phase_ = v; }
   void set_tank_size(float v) { this->tank_size_liters_ = v; }
-  void set_burn_rate(float v) { this->burn_rate_lph_ = v; }
+  void set_burn_rate_idle(float v) { this->burn_rate_idle_ = v; }
+  void set_burn_rate_full(float v) { this->burn_rate_full_ = v; }
   void set_fuel_level_sensor(sensor::Sensor *s) { this->fuel_level_sensor_ = s; }
   void set_fuel_type(const std::string &t) { this->fuel_type_ = t; }
   void set_fuel_unit(const std::string &u) { this->fuel_unit_ = u; }
@@ -159,7 +160,9 @@ class SmartgenHSC941Web : public Component {
 
   // Fuel
   float get_tank_size() const { return this->tank_size_liters_; }
-  float get_burn_rate() const { return this->burn_rate_lph_; }
+  float get_burn_rate_idle() const { return this->burn_rate_idle_; }
+  float get_burn_rate_full() const { return this->burn_rate_full_; }
+  float get_effective_burn_rate() const;
   float get_last_fill_hours() const { return this->last_fill_hours_; }
   sensor::Sensor *get_fuel_level_sensor() { return this->fuel_level_sensor_; }
   const std::string &get_fuel_type() const { return this->fuel_type_; }
@@ -253,7 +256,8 @@ class SmartgenHSC941Web : public Component {
 
   // ── Fuel estimator ──
   float tank_size_liters_{0};
-  float burn_rate_lph_{0};
+  float burn_rate_idle_{0};
+  float burn_rate_full_{0};
   float last_fill_hours_{0};
   sensor::Sensor *fuel_level_sensor_{nullptr};
   std::string fuel_type_{"diesel"};
