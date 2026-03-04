@@ -227,10 +227,12 @@ class SmartgenHSC941 : public PollingComponent {
   int flow_control_pin_{-1};
   int uart_num_{1};
   uart_port_t uart_port_{UART_NUM_1};
+  SemaphoreHandle_t bus_mutex_{nullptr};
 
   // Communication helpers
   void init_uart_();
   bool send_and_receive_(uint8_t *request, size_t req_len, uint8_t *response, size_t *resp_len, size_t expected_len);
+  bool send_and_receive_locked_(uint8_t *request, size_t req_len, uint8_t *response, size_t *resp_len, size_t expected_len);
   bool read_coils_(uint16_t start_address, uint16_t quantity, uint8_t *coil_data, size_t *data_len);
   bool read_holding_registers_(uint16_t start_address, uint16_t quantity, uint16_t *reg_data);
   void set_flow_control_(bool transmit);

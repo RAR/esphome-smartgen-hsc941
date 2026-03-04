@@ -127,6 +127,11 @@ void SmartgenHSC941::set_flow_control_(bool transmit) {
 void SmartgenHSC941::setup() {
   ESP_LOGCONFIG(TAG, "Setting up SmartGen HSC941...");
   this->init_uart_();
+  this->bus_mutex_ = xSemaphoreCreateMutex();
+  if (!this->bus_mutex_) {
+    ESP_LOGE(TAG, "Failed to create bus mutex");
+    this->mark_failed();
+  }
 }
 
 void SmartgenHSC941::dump_config() {
@@ -148,6 +153,22 @@ void SmartgenHSC941::dump_config() {
 bool SmartgenHSC941::send_and_receive_(uint8_t *request, size_t req_len,
                                         uint8_t *response, size_t *resp_len,
                                         size_t expected_len) {
+  // Acquire bus mutex — prevents poll/command collision across tasks
+  if (this->bus_mutex_ && xSemaphoreTake(this->bus_mutex_, pdMS_TO_TICKS(2000)) != pdTRUE) {
+    ESP_LOGW(TAG, "Bus mutex timeout — another transaction in progress");
+    *resp_len = 0;
+    return false;
+  }
+
+  bool success = this->send_and_receive_locked_(request, req_len, response, resp_len, expected_len);
+
+  if (this->bus_mutex_) xSemaphoreGive(this->bus_mutex_);
+  return success;
+}
+
+bool SmartgenHSC941::send_and_receive_locked_(uint8_t *request, size_t req_len,
+                                               uint8_t *response, size_t *resp_len,
+                                               size_t expected_len) {
   // Flush any stale data in RX buffer
   uart_flush_input(this->uart_port_);
 
