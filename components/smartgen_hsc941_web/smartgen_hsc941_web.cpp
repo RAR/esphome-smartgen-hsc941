@@ -38,39 +38,67 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 @media(max-width:768px){html{font-size:15px}}
 
 /* ── Header ── */
-.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px)}
-.hdr-left{display:flex;align-items:center;gap:12px}
-.hdr-logo{width:36px;height:36px;background:linear-gradient(135deg,var(--blue),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center}
-.hdr-logo svg{width:20px;height:20px;fill:#fff}
-.hdr-title{font-size:1.1rem;font-weight:700;letter-spacing:-.02em}
-.hdr-sub{font-size:.7rem;color:var(--dim);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
-.hdr-right{display:flex;align-items:center;gap:10px}
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;backdrop-filter:blur(12px);gap:8px}
+.hdr-left{display:flex;align-items:center;gap:10px;min-width:0}
+.hdr-logo{width:32px;height:32px;background:linear-gradient(135deg,var(--blue),var(--cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hdr-logo svg{width:18px;height:18px;fill:#fff}
+.hdr-title{font-size:1rem;font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-sub{font-size:.65rem;color:var(--dim);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.hdr-right{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.hdr-sep{width:1px;height:18px;background:var(--border);margin:0 2px;flex-shrink:0}
 .badge-ok{background:#16a34a;color:#fff}
 .badge-warn{background:#d97706;color:#fff;animation:pulse-warn 1.5s infinite}
 .badge-sd{background:#dc2626;color:#fff;animation:pulse-sd 1s infinite}
 @keyframes pulse-warn{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes pulse-sd{0%,100%{opacity:1}50%{opacity:.5}}
 /* ── Nav Tabs ── */
-.nav{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:52px;z-index:49;align-items:center;justify-content:space-between}
-.nav-tab{padding:10px 18px;font-size:.78rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;user-select:none;background:none;border-top:none;border-left:none;border-right:none}
+.nav{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 16px;position:sticky;top:52px;z-index:49;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.nav-tabs{display:flex;gap:0}
+.nav-tab{padding:10px 16px;font-size:.75rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;user-select:none;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap}
 .nav-tab:hover{color:var(--text)}
 .nav-tab.active{color:var(--blue);border-bottom-color:var(--blue)}
-.env-bar{display:flex;gap:16px;align-items:center;margin-left:auto;padding-right:4px}
-.env-item{display:flex;align-items:center;gap:5px;font-size:.78rem;color:var(--dim)}
-.env-val{font-weight:700;color:var(--text);font-size:.85rem}
-.env-unit{font-size:.68rem;color:var(--dim)}
+.env-bar{display:flex;gap:12px;align-items:center;margin-left:auto;padding:4px 4px 4px 0}
+.env-item{display:flex;align-items:center;gap:4px;font-size:.72rem;color:var(--dim)}
+.env-val{font-weight:700;color:var(--text);font-size:.8rem}
+.env-unit{font-size:.65rem;color:var(--dim)}
 .section{display:none}
 .section.active{display:block}
-.badge{padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.badge{padding:3px 8px;border-radius:20px;font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
 .badge-conn{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
 .badge-disc{background:var(--red-bg);color:var(--red);border:1px solid #ef444430;animation:pulse-red 2s infinite}
 .badge-mode{background:var(--blue-bg);color:var(--blue);border:1px solid #3b82f630}
 .badge-auto{background:var(--green-bg);color:var(--green);border:1px solid #22c55e30}
 .badge-manual{background:#f59e0b18;color:var(--orange);border:1px solid #f59e0b30}
-.unit-toggle{background:var(--card);border:1px solid var(--border);color:var(--dim);padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:color .2s,border-color .2s;user-select:none}
+.unit-toggle{background:var(--card);border:1px solid var(--border);color:var(--dim);padding:3px 8px;border-radius:20px;font-size:.62rem;font-weight:700;letter-spacing:.04em;cursor:pointer;transition:color .2s,border-color .2s;user-select:none}
 .unit-toggle:hover{color:var(--text);border-color:var(--blue)}
 .badge-stop{background:var(--red-bg);color:var(--red);border:1px solid #ef444430}
 @keyframes pulse-red{0%,100%{opacity:1}50%{opacity:.6}}
+/* ── Mobile: Header + Nav ── */
+@media(max-width:600px){
+.hdr{padding:8px 12px}
+.hdr-logo{width:28px;height:28px;border-radius:6px}.hdr-logo svg{width:16px;height:16px}
+.hdr-title{font-size:.85rem}
+.hdr-sub{display:none}
+.hdr-right{gap:4px}
+.hdr-sep{height:14px;margin:0 1px}
+.badge{padding:2px 6px;font-size:.56rem}
+.unit-toggle{padding:2px 6px;font-size:.56rem}
+.nav{top:44px;padding:0 8px}
+.nav-tab{padding:8px 10px;font-size:.68rem}
+.env-bar{gap:8px;font-size:.65rem}
+.env-item{font-size:.65rem}
+.env-val{font-size:.72rem}
+}
+@media(max-width:380px){
+.hdr-title{font-size:.78rem}
+.hdr-logo{width:24px;height:24px}.hdr-logo svg{width:14px;height:14px}
+.hdr-right{gap:3px}
+.badge{padding:2px 5px;font-size:.52rem}
+.unit-toggle{padding:2px 5px;font-size:.52rem}
+.nav{top:40px}
+.nav-tab{padding:7px 8px;font-size:.62rem}
+.env-bar{display:none}
+}
 
 /* ── Layout ── */
 .main{max-width:1400px;margin:0 auto;padding:16px 20px 80px}
@@ -308,7 +336,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 [data-theme="light"] .relay-item{background:#f8f9fb}
 [data-theme="light"] ::-webkit-scrollbar-thumb{background:#c0c4cc}
 /* ── Header Icon Buttons ── */
-.hdr-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--dim);cursor:pointer;font-size:.85rem;padding:3px 7px;line-height:1;transition:all .15s}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
+.hdr-btn{background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--dim);cursor:pointer;font-size:.72rem;padding:3px 8px;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center;height:22px;min-width:22px}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
+.hdr-btn svg{width:12px;height:12px}
+@media(max-width:600px){.hdr-btn{height:20px;min-width:20px;padding:2px 6px;font-size:.65rem}.hdr-btn svg{width:11px;height:11px}}
+@media(max-width:380px){.hdr-btn{height:18px;min-width:18px;padding:2px 5px}.hdr-btn svg{width:10px;height:10px}}
 /* ── PIN Lock Overlay ── */
 .pin-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}.pin-ov.show{opacity:1;pointer-events:auto}
 .pin-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 20px;width:280px;text-align:center}
@@ -337,6 +368,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <button class="hdr-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">&#9790;</button>
   <button class="hdr-btn" id="lockBtn" onclick="openPinModal()" title="PIN lock"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></button>
   <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">&deg;C</button>
+  <div class="hdr-sep"></div>
   <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
   <span class="badge badge-mode" id="modeBadge">---</span>
@@ -344,7 +376,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 </header>
 
 <nav class="nav">
- <div style="display:flex;gap:0">
+ <div class="nav-tabs">
   <button class="nav-tab active" data-sec="monitor" onclick="switchSec('monitor')">Monitoring</button>
   <button class="nav-tab" data-sec="config" onclick="switchSec('config')">Configuration</button>
   <button class="nav-tab" data-sec="history" onclick="switchSec('history')">History</button>
