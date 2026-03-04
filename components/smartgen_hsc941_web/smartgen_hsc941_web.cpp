@@ -202,9 +202,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── Sidebar (desktop) ── */
 .sidebar{position:fixed;left:0;top:92px;bottom:0;width:76px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;align-items:center;padding:10px 0 16px;gap:4px;z-index:48;overflow-y:auto;overflow-x:hidden}
-.sb-btn{position:relative;width:60px;height:auto;border:none;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px 6px;transition:all .15s;color:#fff;flex-shrink:0}
-.sb-btn::before{content:'';position:absolute;inset:0;border-radius:10px;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.1)}
+.sb-btn{position:relative;width:60px;height:auto;border:none;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px 6px;transition:all .15s;color:var(--dim);background:var(--card);border:1px solid var(--border);flex-shrink:0}
+.sb-btn::before{content:'';position:absolute;inset:0;border-radius:10px;opacity:0;transition:opacity .15s;background:rgba(255,255,255,.06)}
 .sb-btn:hover::before{opacity:1}
+.sb-btn:hover{color:var(--text);border-color:var(--faint)}
 .sb-btn:active{transform:scale(.92)}
 .sb-btn svg{width:18px;height:18px;pointer-events:none;flex-shrink:0}
 .sb-btn .sb-lbl{font-size:.5rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;line-height:1;pointer-events:none;white-space:nowrap}
@@ -428,28 +429,28 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 <!-- Sidebar Controls (desktop) -->
 <aside class="sidebar" id="sidebar">
- <button class="sb-btn btn-start" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')">
+ <button class="sb-btn" onclick="confirmCmd(0,'Start Engine','Send START command to the generator?')">
   <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6,3 20,12 6,21"/></svg><span class="sb-lbl">Start</span>
  </button>
- <button class="sb-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')">
+ <button class="sb-btn" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger')">
   <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg><span class="sb-lbl">Stop</span>
  </button>
  <div class="sb-divider"></div>
- <button class="sb-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')">
+ <button class="sb-btn" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg><span class="sb-lbl">Auto</span>
  </button>
- <button class="sb-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')">
+ <button class="sb-btn" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 00-4 0"/><path d="M14 10V4a2 2 0 00-4 0v6"/><path d="M10 9.5V5a2 2 0 00-4 0v9"/><path d="M18 11a2 2 0 014 0v3a8 8 0 01-8 8h-2c-2.5 0-3.8-.5-5.5-2L4 16.5a2 2 0 013-2.5L8 15"/></svg><span class="sb-lbl">Manual</span>
  </button>
  <div class="sb-divider"></div>
- <button class="sb-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg><span class="sb-lbl">Xfer On</span>
+ <button class="sb-btn" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64A9 9 0 0120.77 15"/><path d="M5.64 6.64A9 9 0 003.23 15"/><circle cx="12" cy="20" r="1"/><path d="M12 2v10"/></svg><span class="sb-lbl">Xfer On</span>
  </button>
- <button class="sb-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span class="sb-lbl">Xfer Off</span>
+ <button class="sb-btn" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger')">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64A9 9 0 0120.77 15"/><path d="M5.64 6.64A9 9 0 003.23 15"/><circle cx="12" cy="20" r="1"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="4" y1="6" x2="18" y2="16"/></svg><span class="sb-lbl">Xfer Off</span>
  </button>
  <div class="sb-divider"></div>
- <button class="sb-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')">
+ <button class="sb-btn" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?')">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg><span class="sb-lbl">Reset</span>
  </button>
 </aside>
@@ -714,8 +715,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="fab-item"><span class="fab-label">Stop</span><button class="fab-item-btn btn-stop" onclick="confirmCmd(1,'Stop Engine','Send STOP command to the generator?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Auto</span><button class="fab-item-btn btn-auto" onclick="confirmCmd(3,'Auto Mode','Switch to AUTO mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Manual</span><button class="fab-item-btn btn-manual" onclick="confirmCmd(4,'Manual Mode','Switch to MANUAL mode?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 00-4 0"/><path d="M14 10V4a2 2 0 00-4 0v6"/><path d="M10 9.5V5a2 2 0 00-4 0v9"/><path d="M18 11a2 2 0 014 0v3a8 8 0 01-8 8h-2c-2.5 0-3.8-.5-5.5-2L4 16.5a2 2 0 013-2.5L8 15"/></svg></button></div>
-  <div class="fab-item"><span class="fab-label">Xfer Close</span><button class="fab-item-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10"/></svg></button></div>
-  <div class="fab-item"><span class="fab-label">Xfer Open</span><button class="fab-item-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Xfer On</span><button class="fab-item-btn btn-gen-on" onclick="confirmCmd(6,'Close Transfer Switch','Transfer load to generator?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64A9 9 0 0120.77 15"/><path d="M5.64 6.64A9 9 0 003.23 15"/><circle cx="12" cy="20" r="1"/><path d="M12 2v10"/></svg></button></div>
+  <div class="fab-item"><span class="fab-label">Xfer Off</span><button class="fab-item-btn btn-gen-off" onclick="confirmCmd(5,'Open Transfer Switch','Transfer load to mains?','danger');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18.36 6.64A9 9 0 0120.77 15"/><path d="M5.64 6.64A9 9 0 003.23 15"/><circle cx="12" cy="20" r="1"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="4" y1="6" x2="18" y2="16"/></svg></button></div>
   <div class="fab-item"><span class="fab-label">Reset</span><button class="fab-item-btn btn-reset" onclick="confirmCmd(7,'Fault Reset','Reset all active faults?');closeFab()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></button></div>
  </div>
 </div>
