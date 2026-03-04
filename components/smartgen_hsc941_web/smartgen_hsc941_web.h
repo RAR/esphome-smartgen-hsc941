@@ -123,6 +123,7 @@ class SmartgenHSC941Web : public Component {
   static esp_err_t handle_api_fuel_get_(httpd_req_t *req);
   static esp_err_t handle_api_fuel_post_(httpd_req_t *req);
   static esp_err_t handle_api_runtime_history_(httpd_req_t *req);
+  static esp_err_t handle_api_battery_history_(httpd_req_t *req);
   static esp_err_t handle_api_buzzer_post_(httpd_req_t *req);
 
   // Accessor for the controller
@@ -259,6 +260,18 @@ class SmartgenHSC941Web : public Component {
   void load_runtime_history_();
   void save_runtime_day_(const char *date, float hours);
   void check_runtime_history_();
+
+  // ── Battery voltage history ──
+  static const size_t BATT_HIST_SIZE = 240;  // 240 samples @ 30s = 2 hours
+  float batt_hist_buf_[240]{};
+  size_t batt_hist_head_{0};
+  size_t batt_hist_count_{0};
+  float batt_24h_min_{999.0f};
+  float batt_24h_max_{0.0f};
+  double batt_24h_sum_{0};
+  uint32_t batt_24h_count_{0};
+  uint32_t last_batt_sample_{0};
+  void sample_battery_voltage_();
 
   void start_server_();
   void stop_server_();

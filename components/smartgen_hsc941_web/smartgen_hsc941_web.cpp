@@ -618,7 +618,6 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
     <div class="runtime-item"><div class="runtime-val" id="rt_fw">--</div><div class="runtime-lbl">Firmware</div></div>
     <div class="runtime-item"><div class="runtime-val" id="rt_hw">--</div><div class="runtime-lbl">Hardware</div></div>
    </div>
-   </div>
   </div>
  </div>
 </div>
@@ -630,9 +629,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
    <div class="batt-hdr">
     <div><div class="batt-now" id="battNow">--</div><div class="batt-now-lbl">Current</div></div>
     <div class="batt-stats">
-     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--cyan)" id="battMin">--</div><div class="batt-stat-lbl">24h Min</div></div>
-     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--dim)" id="battAvg">--</div><div class="batt-stat-lbl">24h Avg</div></div>
-     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--orange)" id="battMax">--</div><div class="batt-stat-lbl">24h Max</div></div>
+     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--cyan)" id="battMin">--</div><div class="batt-stat-lbl">Min</div></div>
+     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--dim)" id="battAvg">--</div><div class="batt-stat-lbl">Avg</div></div>
+     <div class="batt-stat"><div class="batt-stat-val" style="color:var(--orange)" id="battMax">--</div><div class="batt-stat-lbl">Max</div></div>
     </div>
    </div>
    <div class="batt-spark-wrap" id="battSparkWrap"></div>
@@ -1203,6 +1202,7 @@ loadEventLog();setInterval(loadEventLog,10000);
 loadMaint();setInterval(loadMaint,30000);
 loadFuel();setInterval(loadFuel,15000);
 loadRuntimeHistory();
+loadBattHistory();
 
 function toggleAnnFull(){
  const f=document.getElementById('annFull');
@@ -1244,12 +1244,21 @@ function renderSparkline(){const w=document.getElementById('loadSparkWrap');if(!
 let bMin=999,bMax=0,bSum=0,bCnt=0;
 const battBuf=[];
 function pushBatt(v){if(v==null||v<=0)return;
- if(v<bMin)bMin=v;if(v>bMax)bMax=v;bSum+=v;bCnt++;
- battBuf.push(v);if(battBuf.length>120)battBuf.shift();
+ battBuf.push(v);if(battBuf.length>240)battBuf.shift();
  const mn=document.getElementById('battMin'),mx=document.getElementById('battMax'),av=document.getElementById('battAvg'),nw=document.getElementById('battNow');
- if(mn)mn.textContent=bMin.toFixed(1)+'V';if(mx)mx.textContent=bMax.toFixed(1)+'V';if(av)av.textContent=(bSum/bCnt).toFixed(1)+'V';if(nw)nw.textContent=v.toFixed(1)+'V';
+ if(nw)nw.textContent=v.toFixed(1)+'V';
+ if(bCnt>0){if(mn)mn.textContent=bMin.toFixed(1)+'V';if(mx)mx.textContent=bMax.toFixed(1)+'V';if(av)av.textContent=(bSum/bCnt).toFixed(1)+'V';}
  renderBattSparkline();
 }
+function loadBattHistory(){fetch('/api/battery_history').then(r=>r.json()).then(d=>{
+ if(d.samples&&d.samples.length){d.samples.forEach(v=>battBuf.push(v));}
+ if(d.count>0){bMin=d.min;bMax=d.max;bSum=d.avg*d.count;bCnt=d.count;
+  const mn=document.getElementById('battMin'),mx=document.getElementById('battMax'),av=document.getElementById('battAvg');
+  if(mn)mn.textContent=bMin.toFixed(1)+'V';if(mx)mx.textContent=bMax.toFixed(1)+'V';if(av)av.textContent=(bSum/bCnt).toFixed(1)+'V';
+ }
+ if(battBuf.length>0){const nw=document.getElementById('battNow');if(nw)nw.textContent=battBuf[battBuf.length-1].toFixed(1)+'V';}
+ renderBattSparkline();
+}).catch(()=>{});}
 function renderBattSparkline(){const w=document.getElementById('battSparkWrap');if(!w||battBuf.length<3)return;
  const W=w.clientWidth||200,H=48;
  const lo=Math.min(...battBuf),hi=Math.max(...battBuf);
@@ -1409,6 +1418,11 @@ void SmartgenHSC941Web::loop() {
   if (now - this->last_hist_check_ >= 60000) {
     this->last_hist_check_ = now;
     this->check_runtime_history_();
+  }
+  // Sample battery voltage every 30 seconds
+  if (now - this->last_batt_sample_ >= 30000) {
+    this->last_batt_sample_ = now;
+    this->sample_battery_voltage_();
   }
 }
 
@@ -2533,6 +2547,15 @@ void SmartgenHSC941Web::start_server_() {
   };
   httpd_register_uri_handler(this->server_, &runtime_hist_uri);
 
+  // Battery voltage history
+  httpd_uri_t batt_hist_uri = {
+      .uri = "/api/battery_history",
+      .method = HTTP_GET,
+      .handler = SmartgenHSC941Web::handle_api_battery_history_,
+      .user_ctx = this,
+  };
+  httpd_register_uri_handler(this->server_, &batt_hist_uri);
+
   // Buzzer
   httpd_uri_t buzzer_post_uri = {
       .uri = "/api/buzzer",
@@ -3407,6 +3430,79 @@ esp_err_t SmartgenHSC941Web::handle_api_fuel_post_(httpd_req_t *req) {
   httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
   const char *r = R"({"ok":true})";
   return httpd_resp_send(req, r, strlen(r));
+}
+
+// ============================================================
+//  Battery voltage sampling & API
+// ============================================================
+
+void SmartgenHSC941Web::sample_battery_voltage_() {
+  if (!this->controller_) return;
+  auto *sens = this->controller_->get_battery_voltage_sensor();
+  if (!sens || !sens->has_state()) return;
+  float v = sens->state;
+  if (v <= 0 || std::isnan(v)) return;
+
+  // Push into circular buffer
+  this->batt_hist_buf_[this->batt_hist_head_] = v;
+  this->batt_hist_head_ = (this->batt_hist_head_ + 1) % BATT_HIST_SIZE;
+  if (this->batt_hist_count_ < BATT_HIST_SIZE)
+    this->batt_hist_count_++;
+
+  // Update 24h running stats
+  if (v < this->batt_24h_min_) this->batt_24h_min_ = v;
+  if (v > this->batt_24h_max_) this->batt_24h_max_ = v;
+  this->batt_24h_sum_ += v;
+  this->batt_24h_count_++;
+}
+
+esp_err_t SmartgenHSC941Web::handle_api_battery_history_(httpd_req_t *req) {
+  auto *self = static_cast<SmartgenHSC941Web *>(req->user_ctx);
+  if (!self) {
+    httpd_resp_send_err(req, HTTPD_500_INTERNAL_SERVER_ERROR, "Not available");
+    return ESP_FAIL;
+  }
+
+  std::string json;
+  json.reserve(2048);
+  json += "{\"samples\":[";
+
+  size_t n = self->batt_hist_count_;
+  if (n > 0) {
+    // Read oldest to newest from the circular buffer
+    size_t start = (self->batt_hist_head_ + BATT_HIST_SIZE - n) % BATT_HIST_SIZE;
+    for (size_t i = 0; i < n; i++) {
+      if (i > 0) json += ',';
+      char fb[16];
+      snprintf(fb, sizeof(fb), "%.2f", self->batt_hist_buf_[(start + i) % BATT_HIST_SIZE]);
+      json += fb;
+    }
+  }
+
+  json += "],\"min\":";
+  char fb[16];
+  if (self->batt_24h_count_ > 0) {
+    snprintf(fb, sizeof(fb), "%.2f", self->batt_24h_min_);
+    json += fb;
+    json += ",\"max\":";
+    snprintf(fb, sizeof(fb), "%.2f", self->batt_24h_max_);
+    json += fb;
+    json += ",\"avg\":";
+    snprintf(fb, sizeof(fb), "%.2f", (float)(self->batt_24h_sum_ / self->batt_24h_count_));
+    json += fb;
+  } else {
+    json += "0,\"max\":0,\"avg\":0";
+  }
+  json += ",\"count\":";
+  char cb[12];
+  snprintf(cb, sizeof(cb), "%u", (unsigned)self->batt_24h_count_);
+  json += cb;
+  json += '}';
+
+  httpd_resp_set_type(req, "application/json");
+  httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
+  httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+  return httpd_resp_send(req, json.c_str(), json.size());
 }
 
 // ============================================================

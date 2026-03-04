@@ -91,6 +91,7 @@ class SmartgenHSC941 : public PollingComponent {
   sensor::Sensor *get_water_temp_sensor() const { return this->water_temp_sensor_; }
   sensor::Sensor *get_aux_sensor_1() const { return this->aux_sensor_1_sensor_; }
   sensor::Sensor *get_total_hours_sensor() const { return this->engine_total_hours_sensor_; }
+  sensor::Sensor *get_battery_voltage_sensor() const { return this->battery_voltage_sensor_; }
 
   // ===== SENSOR SETTERS (Function Code 03H - Holding Registers) =====
   void set_gen_voltage_a_sensor(sensor::Sensor *s) { this->gen_voltage_a_sensor_ = s; }
