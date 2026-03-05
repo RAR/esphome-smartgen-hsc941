@@ -99,15 +99,62 @@ external_components:
 ```yaml
 smartgen_hsc941_web:
   smartgen_hsc941_id: genset   # ID of the smartgen_hsc941 hub
-  port: 8080                   # HTTP port (default: 8080)
-  # css_url: ""                # Optional: external CSS URL override
-  # js_url: ""                 # Optional: external JS URL override
+  port: 80                     # HTTP port (default: 8080)
+  single_phase: true           # Hide Phase B/C columns (default: false)
+  pin_code: "1234"             # 4-digit PIN to unlock controls (default: none)
+  buzzer_pin: 46               # GPIO for alarm buzzer (default: none)
+  language: en                 # UI language (default: en)
+
+  # Fuel tracking
+  tank_size: 325               # Tank capacity in gallons/litres (default: 0 = disabled)
+  burn_rate_idle: 0.96         # Fuel consumption at idle (default: 0)
+  burn_rate_full: 1.87         # Fuel consumption at full load (default: 0)
+  fuel_type: propane           # diesel | propane | natural_gas | gasoline (default: diesel)
+  fuel_unit: gph               # gph | lph (default: lph)
+  fuel_level_id: propane_level # Sensor ID for fuel level gauge (default: none)
+
+  # Ambient environment (extra sensors shown on dashboard)
+  ambient_temp_id: amb_temp_value
+  ambient_temp_name: "Ambient Temp"       # Display label (default: "Ambient Temp")
+  ambient_humidity_id: amb_humidity_value
+  ambient_humidity_name: "Humidity"        # Display label (default: "Humidity")
+
+  # Mains power detection
+  mains_sensor_id: mains_present          # Binary sensor for utility power (default: none)
+
+  # Relay outputs (up to 8, exposed as toggles on the dashboard)
+  relay_1_id: relay1
+  relay_1_name: "Coolant Heater"
+  relay_2_id: relay2
+  relay_2_name: "Battery Charger"
+  # relay_3_id .. relay_8_id / relay_3_name .. relay_8_name
+
+  # Theming
+  # css_url: ""                # External CSS URL (overrides built-in styles)
+  # js_url: ""                 # External JS URL (overrides built-in script)
 ```
 
 | Parameter | Required | Default | Description |
 |-----------|----------|---------|-------------|
 | `smartgen_hsc941_id` | **Yes** | — | ID of the `smartgen_hsc941` hub component |
 | `port` | No | `8080` | TCP port for the web server |
+| `single_phase` | No | `false` | Hide Phase B/C columns for single-phase generators |
+| `pin_code` | No | `""` | 4-digit PIN required to unlock engine controls |
+| `buzzer_pin` | No | — | GPIO pin for alarm buzzer (0–48) |
+| `language` | No | `en` | Dashboard UI language |
+| `tank_size` | No | `0` | Fuel tank capacity (0 = fuel tracking disabled) |
+| `burn_rate_idle` | No | `0` | Fuel consumption rate at idle |
+| `burn_rate_full` | No | `0` | Fuel consumption rate at full load |
+| `fuel_type` | No | `diesel` | Fuel type: `diesel`, `propane`, `natural_gas`, `gasoline` |
+| `fuel_unit` | No | `lph` | Fuel measurement unit: `lph` (litres/hr) or `gph` (gallons/hr) |
+| `fuel_level_id` | No | — | ID of a `sensor` providing fuel level percentage |
+| `ambient_temp_id` | No | — | ID of a `sensor` providing ambient temperature |
+| `ambient_temp_name` | No | `Ambient Temp` | Display label for ambient temperature |
+| `ambient_humidity_id` | No | — | ID of a `sensor` providing ambient humidity |
+| `ambient_humidity_name` | No | `Humidity` | Display label for ambient humidity |
+| `mains_sensor_id` | No | — | ID of a `binary_sensor` detecting utility/mains power |
+| `relay_N_id` | No | — | ID of a `switch` for relay N (1–8) |
+| `relay_N_name` | No | `Relay N` | Display label for relay N on the dashboard |
 | `css_url` | No | `""` | External CSS URL (overrides built-in styles) |
 | `js_url` | No | `""` | External JS URL (overrides built-in script) |
 
