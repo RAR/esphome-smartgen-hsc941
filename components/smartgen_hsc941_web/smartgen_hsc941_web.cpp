@@ -1500,11 +1500,14 @@ function renderRuntimeChart(days){
  const svg=document.getElementById('runtimeChart');if(!svg||!days.length)return;
  const W=svg.clientWidth||600,H=140,pt=20,pb=20,pl=35,pr=10;
  const cW=W-pl-pr,cH=H-pt-pb,maxH=Math.max(...days.map(d=>d.h),0.1);
- const bw=Math.max(6,Math.floor(cW/days.length*0.65)),step=Math.floor(cW/days.length);
+ const bwMax=40,bw=Math.min(bwMax,Math.max(6,Math.floor(cW/days.length*0.65)));
+ const step=cW/days.length;
+ const totalBars=days.length*step;
+ const xOff=pl+(cW-totalBars)/2;
  let h='';for(let i=0;i<=4;i++){const y=pt+cH*(1-i/4);const v=(maxH*i/4).toFixed(maxH>=10?0:1);
   h+='<line x1="'+pl+'" y1="'+y+'" x2="'+(W-pr)+'" y2="'+y+'" stroke="#252a3a"/>';
   h+='<text x="'+(pl-4)+'" y="'+(y+3)+'" fill="#6b7394" font-size="9" text-anchor="end">'+v+'</text>';}
- days.forEach((d,i)=>{const x=pl+i*step+(step-bw)/2;const bh=d.h/maxH*cH;const y=pt+cH-bh;
+ days.forEach((d,i)=>{const x=xOff+i*step+(step-bw)/2;const bh=d.h/maxH*cH;const y=pt+cH-bh;
   h+='<rect x="'+x+'" y="'+y+'" width="'+bw+'" height="'+Math.max(bh,1)+'" fill="var(--blue)" rx="2" opacity=".8"><title>'+d.d+': '+d.h.toFixed(1)+'h</title></rect>';
   if(days.length<=14||i%Math.ceil(days.length/7)===0)h+='<text x="'+(x+bw/2)+'" y="'+(H-4)+'" fill="#6b7394" font-size="8" text-anchor="middle">'+d.d.slice(5)+'</text>';});
  svg.innerHTML=h;}
