@@ -11,24 +11,61 @@ An [ESPHome](https://esphome.io/) external component for the **SmartGen HSC941**
 - Optional flow control pin for RS485 DE/RE direction control
 - Auto-detects communication failures and reports status in Home Assistant
 
+## Screenshots
+
+| Monitoring | Configuration |
+|:-:|:-:|
+| ![Monitoring](docs/monitoring.png) | ![Configuration](docs/configuration.png) |
+
+| Controller Config | History |
+|:-:|:-:|
+| ![Controller Config](docs/controller-config.png) | ![History](docs/history.png) |
+
 ## Supported Hardware
 
 - **Controller:** SmartGen HSC941 (firmware V1.0+)
 - **MCU:** ESP32-S3 (ESP-IDF framework)
 - **Interface:** RS485 (half-duplex, 9600 baud, 8N1)
 
+### Recommended Board
+
+[**Waveshare ESP32-S3-ETH-8DI-8RO**](https://devices.esphome.io/devices/waveshare-esp32-s3-eth-8di-8ro/) — an industrial ESP32-S3 board with everything needed out of the box:
+
+- ESP32-S3-WROOM-1U-N16R8 (16 MB flash, 8 MB PSRAM)
+- Isolated RS485 interface (GPIO17 TX / GPIO18 RX) — connects directly to the HSC941
+- 8 optocoupler-isolated digital inputs + 8 relay outputs (10 A / 250 VAC)
+- W5500 Ethernet (also available in PoE variant)
+- I²C bus (GPIO42 SDA / GPIO41 SCL) with on-board TCA9554 I/O expander + PCF85063 RTC
+- 7–36 V DC input or USB-C power
+- Buzzer, RGB LED, ABS rail-mount enclosure
+
+Also available as the PoE variant: **ESP32-S3-POE-ETH-8DI-8RO**. The same ESPHome configuration works for both.
+
 ## Installation
 
 Add this repository as an external component in your ESPHome YAML:
 
 ```yaml
+esp32:
+  board: esp32-s3-devkitc-1
+  flash_size: 16MB
+  partitions: partitions.csv      # Custom partition table (included in repo)
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+  speed: 80MHz
+
 external_components:
   - source:
       type: git
       url: https://github.com/RAR/esphome-smartgen-hsc941
       ref: main
-    components: [smartgen_hsc941]
+    components: [smartgen_hsc941, smartgen_hsc941_web]
 ```
+
+> **Note:** The included `partitions.csv` provides a custom partition layout for 16 MB flash with dual OTA slots (2 MB each), NVS, and a 256 KB SPIFFS partition for event logging. Copy it into your ESPHome config directory next to your YAML file.
 
 ## Web Dashboard (Companion Component)
 

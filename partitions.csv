@@ -1,0 +1,10 @@
+# ESPHome custom partition table for 16MB flash ESP32-S3
+# App partitions reduced from 7936KB to 2048KB each (firmware is ~1MB)
+# Added 256KB SPIFFS partition for event log storage
+# Name,     Type, SubType,  Offset,   Size
+otadata,    data, ota,      ,         0x2000,
+phy_init,   data, phy,      ,         0x1000,
+app0,       app,  ota_0,    ,         0x200000,
+app1,       app,  ota_1,    ,         0x200000,
+nvs,        data, nvs,      ,         0x6D000,
+eventlog,   data, spiffs,   ,         0x40000,
