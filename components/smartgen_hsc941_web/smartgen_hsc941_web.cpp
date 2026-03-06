@@ -376,10 +376,10 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 [data-theme="light"] .relay-item{background:#f8f9fb}
 [data-theme="light"] ::-webkit-scrollbar-thumb{background:#c0c4cc}
 /* ── Header Icon Buttons ── */
-.hdr-btn{background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--dim);cursor:pointer;font-size:.72rem;padding:3px 8px;line-height:1;transition:all .15s;display:flex;align-items:center;justify-content:center;height:22px;min-width:22px}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
+.hdr-btn{background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--dim);cursor:pointer;font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:3px 8px;line-height:1;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
 .hdr-btn svg{width:12px;height:12px}
-@media(max-width:600px){.hdr-btn{height:20px;min-width:20px;padding:2px 6px;font-size:.65rem}.hdr-btn svg{width:11px;height:11px}}
-@media(max-width:380px){.hdr-btn{height:18px;min-width:18px;padding:2px 5px}.hdr-btn svg{width:10px;height:10px}}
+@media(max-width:600px){.hdr-btn{padding:2px 6px;font-size:.56rem}.hdr-btn svg{width:11px;height:11px}}
+@media(max-width:380px){.hdr-btn{padding:2px 5px;font-size:.52rem}.hdr-btn svg{width:10px;height:10px}}
 /* ── PIN Lock Overlay ── */
 .pin-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}.pin-ov.show{opacity:1;pointer-events:auto}
 .pin-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 20px;width:280px;text-align:center}
