@@ -175,6 +175,8 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 
 /* ── I/O row ── */
 .io-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:6px}
+.io-subhd{grid-column:1/-1;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:4px}
+.io-subhd:first-child{margin-top:0}
 .io-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:.74rem;font-weight:500;color:var(--dim);background:var(--surface);border:1px solid transparent;transition:all .3s}
 .io-item .io-lbl{flex:1}
 .io-item .io-state{font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;flex-shrink:0}
@@ -882,11 +884,15 @@ const ANN=[
  {k:'op_open_w',l:'O.P. Sensor Open',t:'w'},{k:'aux_open_w',l:'Aux Sensor Open',t:'w'},{k:'aux_w',l:'Aux Sensor Warning',t:'w'}
 ];
 const IOS=[
+ {g:'Status'},
  {k:'on_load',l:'Xfer Closed',c:'green'},{k:'auto_mode',l:'Auto Mode',c:'blue'},{k:'manual_mode',l:'Manual Mode',c:'amber'},
  {k:'stop_mode',l:'Stop Mode',c:'red'},{k:'estop_in',l:'E-Stop Input',c:'red'},
+ {g:'Relays'},
  {k:'start_relay',l:'Start Relay',c:'green'},{k:'fuel_relay',l:'Fuel Relay',c:'green'},
+ {g:'Digital Inputs'},
  {k:'aux_in1',l:'Aux Input 1',c:'blue'},{k:'aux_in2',l:'Aux Input 2',c:'blue'},{k:'aux_in3',l:'Aux Input 3',c:'blue'},
  {k:'aux_in4',l:'Aux Input 4',c:'blue'},{k:'aux_in5',l:'Aux Input 5',c:'blue'},{k:'aux_in6',l:'Aux Input 6',c:'blue'},
+ {g:'Flex Relay Outputs'},
  {k:'aux_out1',l:'Aux Output 1',c:'green'},{k:'aux_out2',l:'Aux Output 2',c:'green'},
  {k:'aux_out3',l:'Aux Output 3',c:'green'},{k:'aux_out4',l:'Aux Output 4',c:'green'}
 ];
@@ -896,7 +902,7 @@ function initPanels(){
  ANN.forEach(a=>{ah+=`<div class="ann" id="ann_${a.k}"><span class="lamp off" id="lmp_${a.k}"></span><span>${a.l}</span></div>`;});
  document.getElementById('annPanel').innerHTML=ah;
  let ih='';
- IOS.forEach(io=>{ih+=`<div class="io-item off-state" id="io_${io.k}"><span class="lamp off" id="iol_${io.k}"></span><span class="io-lbl">${io.l}</span><span class="io-state">OFF</span></div>`;});
+ IOS.forEach(io=>{if(io.g){ih+=`<div class="io-subhd">${io.g}</div>`;return;}ih+=`<div class="io-item off-state" id="io_${io.k}"><span class="lamp off" id="iol_${io.k}"></span><span class="io-lbl">${io.l}</span><span class="io-state">OFF</span></div>`;});
  document.getElementById('ioPanel').innerHTML=ih;
 }
 
