@@ -434,6 +434,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <button class="hdr-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle theme">&#9790;</button>
   <button class="hdr-btn" id="lockBtn" onclick="openPinModal()" title="PIN lock"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></button>
   <button class="unit-toggle" id="unitToggle" onclick="toggleUnit()">&deg;C</button>
+  <button class="unit-toggle" id="pressToggle" onclick="togglePress()">kPa</button>
   <div class="hdr-sep"></div>
   <span class="badge badge-ok" id="alarmBadge">OK</span>
   <span class="badge badge-disc" id="connBadge">OFFLINE</span>
@@ -520,7 +521,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
   <div class="card-body">
    <table class="dtable">
     <tr><td class="dlbl">Water Temperature</td><td class="dval"><span id="v_wt">--</span><span class="dunit tunit">&#176;C</span></td></tr>
-    <tr><td class="dlbl">Oil Pressure</td><td class="dval"><span id="v_op">--</span><span class="dunit">kPa</span></td></tr>
+    <tr><td class="dlbl">Oil Pressure</td><td class="dval"><span id="v_op">--</span><span class="dunit punit">kPa</span></td></tr>
     <tr><td class="dlbl">Battery Voltage</td><td class="dval"><span id="v_bv">--</span><span class="dunit">V</span></td></tr>
     <tr><td class="dlbl">Charge Voltage</td><td class="dval"><span id="v_cv">--</span><span class="dunit">V</span></td></tr>
     <tr><td class="dlbl">Engine Speed</td><td class="dval"><span id="v_rpm2">--</span><span class="dunit">RPM</span></td></tr>
@@ -815,8 +816,16 @@ function tempVal(c,d){if(c==null)return'--';const v=useFahr?cToF(c):c;return v.t
 function tempUnit(){return useFahr?'\u00b0F':'\u00b0C';}
 function toggleUnit(){useFahr=!useFahr;localStorage.setItem('tempUnit',useFahr?'F':'C');document.getElementById('unitToggle').textContent=useFahr?'\u00b0F':'\u00b0C';updateTempUnits();if(lastData)update(lastData);if(thData&&thData.length)renderThermostat();}
 function updateTempUnits(){document.querySelectorAll('.tunit').forEach(e=>{e.innerHTML=useFahr?'&deg;F':'&deg;C';});}
+/* \u2500\u2500 Pressure unit toggle \u2500\u2500 */
+let usePsi=localStorage.getItem('pressUnit')==='PSI';
+function kPaToPsi(kpa){return kpa*0.14503773773;}
+function pressVal(kpa,d){if(kpa==null)return'--';const v=usePsi?kPaToPsi(kpa):kpa;return v.toFixed(d!=null?d:(usePsi?1:0));}
+function pressUnit(){return usePsi?'PSI':'kPa';}
+function togglePress(){usePsi=!usePsi;localStorage.setItem('pressUnit',usePsi?'PSI':'kPa');document.getElementById('pressToggle').textContent=usePsi?'PSI':'kPa';updatePressUnits();if(lastData)update(lastData);}
+function updatePressUnits(){document.querySelectorAll('.punit').forEach(e=>{e.textContent=usePsi?'PSI':'kPa';});}
 let lastData=null;
 {const b=document.getElementById('unitToggle');if(b)b.textContent=useFahr?'\u00b0F':'\u00b0C';}
+{const p=document.getElementById('pressToggle');if(p)p.textContent=usePsi?'PSI':'kPa';}
 
 /* ── SVG Gauge factory ── */
 function mkGauge(containerId,label,unit,min,max,color,decimals){
@@ -941,8 +950,9 @@ function update(d){
  // Engine
  const ENG_STATES=['Standby','Preheat','Fuel Output','Crank','Crank Rest','Safety On','Start Idle','Warming Up','Wait On-load','Running','Cooling','Stop Idle','ETS','Wait Stop','Stop Fail'];
  const AUTO_STATES=['Standby','Mains OK Delay','Mains Fail Delay','Start Delay','Starting','Warm-up','ATS Close Delay','On Load','Mains Return Delay','Cool Down','ATS Open Delay','ATS Opened','Stop Delay','Stopping'];
- const eng=[['v_op','oil_press'],['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1']];
+ const eng=[['v_bv','batt_v'],['v_cv','charge_v'],['v_rpm2','rpm'],['v_aux','aux1']];
  eng.forEach(([el,k])=>{const e=document.getElementById(el);if(e)e.textContent=f(s[k]);});
+ {const e=document.getElementById('v_op');if(e)e.textContent=pressVal(s.oil_press,usePsi?1:0);}
  {const e=document.getElementById('v_es');if(e){const v=s.eng_status;e.textContent=v!=null?(ENG_STATES[Math.floor(v)]||v):'--';}}
  {const e=document.getElementById('v_as');if(e){const v=s.auto_status;e.textContent=v!=null?(AUTO_STATES[Math.floor(v)]||v):'--';}}
  // Water temp with unit conversion
@@ -1323,7 +1333,7 @@ document.addEventListener('click',function(e){
 });
 
 /* ── Init ── */
-initGauges();initPanels();updateTempUnits();poll();setInterval(poll,2500);
+initGauges();initPanels();updateTempUnits();updatePressUnits();poll();setInterval(poll,2500);
 loadExercise();setInterval(pollExercise,3000);
 loadThermostat();setInterval(pollThermostat,5000);
 loadEventLog();setInterval(loadEventLog,10000);
