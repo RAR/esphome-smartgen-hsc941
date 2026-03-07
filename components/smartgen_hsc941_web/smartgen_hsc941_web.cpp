@@ -1174,6 +1174,7 @@ function switchSec(id){
  if(sec)sec.classList.add('active');
  const tab=document.querySelector('.nav-tab[data-sec=\"'+id+'\"]');
  if(tab)tab.classList.add('active');
+ if(id==='history'){if(rtDays)renderRuntimeChart(rtDays);renderBattSparkline();}
 }
 
 /* ── Relay Thermostat ── */
@@ -1497,8 +1498,9 @@ function fillTank(){fetch('/api/fuel',{method:'POST',headers:{'Content-Type':'ap
  .then(r=>r.json()).then(d=>{toast(d.ok?'Tank marked filled':'Failed',d.ok?'ok':'err');loadFuel();}).catch(()=>toast('Error','err'));}
 
 /* ── Runtime History Chart ── */
+let rtDays=null;
 function loadRuntimeHistory(){fetch('/api/runtime_history').then(r=>r.json()).then(d=>{
- if(d.days&&d.days.length)renderRuntimeChart(d.days);}).catch(()=>{});}
+ if(d.days&&d.days.length){rtDays=d.days;renderRuntimeChart(d.days);}}).catch(()=>{});}
 function renderRuntimeChart(days){
  const svg=document.getElementById('runtimeChart');if(!svg||!days.length)return;
  const W=svg.clientWidth||600,H=140,pt=20,pb=20,pl=35,pr=10;
