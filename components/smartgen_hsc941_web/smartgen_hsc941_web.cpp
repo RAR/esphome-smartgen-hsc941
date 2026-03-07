@@ -1330,6 +1330,8 @@ loadMaint();setInterval(loadMaint,30000);
 loadFuel();setInterval(loadFuel,15000);
 loadRuntimeHistory();
 loadBattHistory();
+/* silently fetch config at startup to relabel I/O names */
+fetch('/api/config').then(r=>r.json()).then(d=>{if(d&&d.ok){cfgData=d;renderCfg(d);relabelIO(d);var st=document.getElementById('cfgStatus');if(st){st.textContent='OK';st.className='cfg-status ok';}}}).catch(()=>{});
 
 function toggleAnnFull(){
  const f=document.getElementById('annFull');
@@ -1672,8 +1674,8 @@ function loadCfg(){
   if(!d.ok){st.textContent=d.error||'Read failed';st.className='cfg-status err';return;}
   cfgData=d;
   st.textContent='OK';st.className='cfg-status ok';
-  renderCfg(d);
- }).catch(()=>{st.textContent='Error';st.className='cfg-status err';});
+  renderCfg(d);relabelIO(d);
+ }).catch(()=>{st.textContent='Error';st.className='cfg-status err';
 }
 function cfgVal(raw,scale){
  if(scale>1)return(raw/scale).toFixed(scale===10?1:2);
@@ -1714,6 +1716,23 @@ function renderCfg(d){
  }
  h+='</table></div>';
  document.getElementById('cfgContent').innerHTML=h;
+}
+function relabelIO(d){
+ if(!d||!d.data)return;const s=d.start,dt=d.data;
+ const ioMap=[
+  {io:'aux_out1',a:0x7F,t:LBL_AUX_OUT},{io:'aux_out2',a:0x80,t:LBL_AUX_OUT},
+  {io:'aux_out3',a:0x81,t:LBL_AUX_OUT},{io:'aux_out4',a:0x82,t:LBL_AUX_OUT},
+  {io:'aux_in1',a:0x83,t:LBL_AUX_IN},{io:'aux_in2',a:0x86,t:LBL_AUX_IN},
+  {io:'aux_in3',a:0x89,t:LBL_AUX_IN},{io:'aux_in4',a:0x8C,t:LBL_AUX_IN},
+  {io:'aux_in5',a:0x8F,t:LBL_AUX_IN},{io:'aux_in6',a:0xBB,t:LBL_AUX_IN}
+ ];
+ ioMap.forEach(m=>{
+  const idx=m.a-s;if(idx<0||idx>=dt.length)return;
+  const v=dt[idx],lbl=m.t[v];
+  if(lbl==null)return;
+  const el=document.querySelector('#io_'+m.io+' .io-lbl');
+  if(el)el.textContent=lbl;
+ });
 }
 
 /* ── Multi-language ── */
