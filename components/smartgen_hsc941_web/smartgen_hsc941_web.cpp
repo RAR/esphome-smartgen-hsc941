@@ -415,6 +415,7 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 .cfg-raw-tbl .rr-addr{color:var(--dim);width:55px}
 .cfg-raw-tbl .rr-hex{color:var(--cyan);width:50px;text-align:right}
 .cfg-raw-tbl .rr-dec{text-align:right;width:50px}
+.cfg-lbl{color:var(--dim);font-size:.62rem;font-weight:400;margin-left:4px}
 
 </style>
 </head>
@@ -1564,11 +1565,27 @@ const CFG_MAP=[
  {a:0x7C,n:'Window Gain',u:'',s:1,g:'Governor / PID'},
  {a:0x7D,n:'Position Gain',u:'',s:1,g:'Governor / PID'},
  {a:0x7E,n:'Compensation Gain',u:'',s:1,g:'Governor / PID'},
- // Aux Outputs (params 48-50+)
+ // Aux Outputs (params 29-32)
  {a:0x7F,n:'Aux Output 1 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x80,n:'Aux Output 2 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x81,n:'Aux Output 3 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x82,n:'Aux Output 4 Function',u:'',s:1,g:'Aux I/O'},
+ // Aux Inputs 1-5 (params 33-47: Set, Active, Delay each)
+ {a:0x83,n:'Aux Input 1 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x84,n:'Aux Input 1 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x85,n:'Aux Input 1 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x86,n:'Aux Input 2 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x87,n:'Aux Input 2 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x88,n:'Aux Input 2 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x89,n:'Aux Input 3 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x8A,n:'Aux Input 3 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x8B,n:'Aux Input 3 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8C,n:'Aux Input 4 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x8D,n:'Aux Input 4 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x8E,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8F,n:'Aux Input 5 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x90,n:'Aux Input 5 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x91,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
  // Crank Disconnect (params 51-56)
  {a:0x95,n:'Crank Disc. Voltage',u:'V',s:1,g:'Crank Disconnect'},
  {a:0x96,n:'Crank Disc. Frequency',u:'Hz',s:10,g:'Crank Disconnect'},
@@ -1585,12 +1602,12 @@ const CFG_MAP=[
  // Sensor types (params 80-87)
  {a:0xB0,n:'Water Temp Sensor Type',u:'',s:1,g:'Sensor Types'},
  {a:0xB1,n:'Oil Pressure Sensor Type',u:'',s:1,g:'Sensor Types'},
- {a:0xB2,n:'Aux Sensor Type',u:'',s:1,g:'Sensor Types'},
- {a:0xB3,n:'Speed Input Type',u:'',s:1,g:'Sensor Types'},
- {a:0xB4,n:'Voltage Input Type',u:'',s:1,g:'Sensor Types'},
- {a:0xB5,n:'Sensor Type Param 86',u:'',s:1,g:'Sensor Types'},
- {a:0xB6,n:'Sensor Type Param 87',u:'',s:1,g:'Sensor Types'},
- {a:0xB7,n:'Sensor Type Param 88',u:'',s:1,g:'Sensor Types'},
+ {a:0xB2,n:'Aux Sensor Reuse',u:'',s:1,g:'Sensor Types'},
+ {a:0xB3,n:'Aux Sensor Curve',u:'',s:1,g:'Sensor Types'},
+ {a:0xB4,n:'Aux Sensor Shut. Inhibit',u:'',s:1,g:'Sensor Types'},
+ {a:0xB5,n:'Temp Sensor Open Action',u:'',s:1,g:'Sensor Types'},
+ {a:0xB6,n:'Oil Press. Sensor Open',u:'',s:1,g:'Sensor Types'},
+ {a:0xB7,n:'Aux Sensor Open Action',u:'',s:1,g:'Sensor Types'},
  // Sensor warnings (params 91-93)
  {a:0xB8,n:'High Water Temp Warning',u:'\u00b0C',s:1,g:'Sensor Warnings'},
  {a:0xB9,n:'Low Oil Pressure Warning',u:'kPa',s:1,g:'Sensor Warnings'},
@@ -1631,6 +1648,21 @@ const CFG_MAP=[
  {a:0xE8,n:'Oil Press. P4',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
  {a:0xE9,n:'Oil Press. P5',u:'kPa',s:1,g:'Calibration: Oil Pressure'},
 ];
+/* Lookup labels from HSC941 User Manual (Tables 11-13) */
+const LBL_AUX_OUT={0:'Not Used',1:'Common Alarm',2:'ETS Solenoid',3:'Idle Control',4:'Preheat',5:'Gen Close',6:'Excitation',7:'Gen Open',8:'Speed Up',9:'Speed Down',10:'Running Output',11:'Fuel Pump',12:'High-speed',13:'Auto Mode',14:'Fuel Relay',15:'Choke On',16:'Cooling Fan',17:'Reserved'};
+const LBL_AUX_IN={0:'Not Used',1:'High Temp Alarm',2:'Low Oil Press Alarm',3:'Ext. Warning',4:'Ext. Shutdown',5:'Cooling Shutdown',6:'Gen Close Status',7:'60Hz Active',8:'Hi Temp Inhibit',9:'Low OP Inhibit',10:'Remote Start',11:'Low Fuel Warn',12:'Low Coolant Warn',13:'Low Fuel Shutdown',14:'Low Coolant Shutdown',15:'Auto Start Inhibit',16:'Low Oil Level'};
+const LBL_SNSR={0:'None',1:'Custom Res',2:'VDO',3:'SGH',4:'SGD',5:'CURTIS',6:'DATCON',7:'VOLVO-EC',8:'SGX',9:'(4\u201320)mA',10:'(0\u20135)V',11:'Rsvd',12:'Rsvd'};
+const LBL_SNSR_LVL={0:'None',1:'Custom Res',2:'SGH',3:'SGD',4:'(4\u201320)mA',5:'(0\u20135)V',6:'Rsvd',7:'Rsvd'};
+const LBL_AUX_REUSE={0:'Digital Input 6',1:'Temp Sensor',2:'Pressure Sensor',3:'Level Sensor'};
+const LBL_SNSR_OPEN={0:'Indication',1:'Warn',2:'Shutdown'};
+const LBL_ACT={0:'Closed',1:'Open'};
+const LBL_INHIBIT={0:'Enabled',1:'Inhibited'};
+const CFG_LBL={};
+[0x7F,0x80,0x81,0x82].forEach(a=>CFG_LBL[a]=LBL_AUX_OUT);
+[0x83,0x86,0x89,0x8C,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
+[0x84,0x87,0x8A,0x8D,0x90].forEach(a=>CFG_LBL[a]=LBL_ACT);
+CFG_LBL[0xB0]=LBL_SNSR;CFG_LBL[0xB1]=LBL_SNSR;CFG_LBL[0xB2]=LBL_AUX_REUSE;CFG_LBL[0xB3]=LBL_SNSR;
+CFG_LBL[0xB4]=LBL_INHIBIT;[0xB5,0xB6,0xB7].forEach(a=>CFG_LBL[a]=LBL_SNSR_OPEN);
 
 let cfgData=null;
 function loadCfg(){
@@ -1661,8 +1693,10 @@ function renderCfg(d){
  for(const g in groups){
   h+='<div class="cfg-grp"><div class="cfg-grp-hd">'+g+'</div><table class="cfg-tbl">';
   groups[g].forEach(r=>{
-   h+='<tr><td class="cfg-name">'+r.name+'</td><td class="cfg-val">'+r.val;
-   if(r.unit)h+='<span class="cfg-unit"> '+r.unit+'</span>';
+   const lk=CFG_LBL[r.addr],lb=lk&&lk[r.raw]!=null?lk[r.raw]:null;
+   h+='<tr><td class="cfg-name">'+r.name+'</td><td class="cfg-val">';
+   if(lb!=null)h+=lb+'<span class="cfg-lbl">('+r.raw+')</span>';
+   else{h+=r.val;if(r.unit)h+='<span class="cfg-unit"> '+r.unit+'</span>';}
    h+='</td><td class="cfg-reg">0x'+r.addr.toString(16).toUpperCase().padStart(4,'0')+'</td></tr>';
   });
   h+='</table></div>';
