@@ -1675,7 +1675,7 @@ function loadCfg(){
   cfgData=d;
   st.textContent='OK';st.className='cfg-status ok';
   renderCfg(d);relabelIO(d);
- }).catch(()=>{st.textContent='Error';st.className='cfg-status err';
+ }).catch(()=>{st.textContent='Error';st.className='cfg-status err';});
 }
 function cfgVal(raw,scale){
  if(scale>1)return(raw/scale).toFixed(scale===10?1:2);
