@@ -377,9 +377,9 @@ body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--bg)
 [data-theme="light"] ::-webkit-scrollbar-thumb{background:#c0c4cc}
 /* ── Header Icon Buttons ── */
 .hdr-btn{background:var(--card);border:1px solid var(--border);border-radius:20px;color:var(--dim);cursor:pointer;font-size:.62rem;font-weight:700;letter-spacing:.04em;padding:3px 8px;line-height:1;transition:all .15s;display:inline-flex;align-items:center;justify-content:center;gap:3px;white-space:nowrap}.hdr-btn:hover{color:var(--text);border-color:var(--text)}
-.hdr-btn svg{width:12px;height:12px}
-@media(max-width:600px){.hdr-btn{padding:2px 6px;font-size:.56rem}.hdr-btn svg{width:11px;height:11px}}
-@media(max-width:380px){.hdr-btn{padding:2px 5px;font-size:.52rem}.hdr-btn svg{width:10px;height:10px}}
+.hdr-btn svg{width:.62rem;height:.62rem;display:block}
+@media(max-width:600px){.hdr-btn{padding:2px 6px;font-size:.56rem}.hdr-btn svg{width:.56rem;height:.56rem}}
+@media(max-width:380px){.hdr-btn{padding:2px 5px;font-size:.52rem}.hdr-btn svg{width:.52rem;height:.52rem}}
 /* ── PIN Lock Overlay ── */
 .pin-ov{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}.pin-ov.show{opacity:1;pointer-events:auto}
 .pin-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 20px;width:280px;text-align:center}
