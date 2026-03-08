@@ -1536,6 +1536,9 @@ function renderRuntimeChart(days){
 /* ── Controller Config Viewer ── */
 const CFG_START=0x42;
 const CFG_MAP=[
+ // DI4 Function & Delay — confirmed at 0x4B-0x4C by live register test
+ {a:0x4B,n:'Aux Input 4 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x4C,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
  // Timing (params 1-15)
  {a:0x50,n:'Start Delay',u:'s',s:10,g:'Timing'},
  {a:0x51,n:'Stop Delay',u:'s',s:10,g:'Timing'},
@@ -1608,8 +1611,8 @@ const CFG_MAP=[
  {a:0x89,n:'Aux Input 3 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x8A,n:'Aux Input 3 Delay',u:'s',s:10,g:'Aux I/O'},
  {a:0x8B,n:'Reserved (0x8B)',u:'',s:1,g:'Aux I/O'},
- {a:0x8C,n:'Aux Input 4 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x8D,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8C,n:'Reserved (0x8C)',u:'',s:1,g:'Aux I/O'},
+ {a:0x8D,n:'Reserved (0x8D)',u:'',s:1,g:'Aux I/O'},
  {a:0x8E,n:'Reserved (0x8E)',u:'',s:1,g:'Aux I/O'},
  {a:0x8F,n:'Aux Input 5 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x90,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
@@ -1687,7 +1690,7 @@ const LBL_ACT={0:'Closed',1:'Open'};
 const LBL_INHIBIT={0:'Enabled',1:'Inhibited'};
 const CFG_LBL={};
 [0x7F,0x80,0x81,0x82].forEach(a=>CFG_LBL[a]=LBL_AUX_OUT);
-[0x85,0x87,0x89,0x8C,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
+[0x85,0x87,0x89,0x4B,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
 [0x8B,0x8E,0x91].forEach(a=>CFG_LBL[a]=LBL_ACT);
 [0x6D,0x6E,0x6F,0x70,0x71].forEach(a=>CFG_LBL[a]=LBL_ACT);
 CFG_LBL[0xB0]=LBL_SNSR;CFG_LBL[0xB1]=LBL_SNSR;CFG_LBL[0xB2]=LBL_AUX_REUSE;CFG_LBL[0xB3]=LBL_SNSR;
@@ -1750,7 +1753,7 @@ function relabelIO(d){
   {io:'aux_out1',a:0x7F,t:LBL_AUX_OUT},{io:'aux_out2',a:0x80,t:LBL_AUX_OUT},
   {io:'aux_out3',a:0x81,t:LBL_AUX_OUT},{io:'aux_out4',a:0x82,t:LBL_AUX_OUT},
   {io:'aux_in1',a:0x85,t:LBL_AUX_IN},{io:'aux_in2',a:0x87,t:LBL_AUX_IN},
-  {io:'aux_in3',a:0x89,t:LBL_AUX_IN},{io:'aux_in4',a:0x8C,t:LBL_AUX_IN},
+  {io:'aux_in3',a:0x89,t:LBL_AUX_IN},{io:'aux_in4',a:0x4B,t:LBL_AUX_IN},
   {io:'aux_in5',a:0x8F,t:LBL_AUX_IN},{io:'aux_in6',a:0xBB,t:LBL_AUX_IN}
  ];
  ioMap.forEach(m=>{
