@@ -1590,22 +1590,24 @@ const CFG_MAP=[
  {a:0x80,n:'Aux Output 2 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x81,n:'Aux Output 3 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x82,n:'Aux Output 4 Function',u:'',s:1,g:'Aux I/O'},
- // Aux Inputs 1-5 (params 33-47: Set, Active, Delay each)
- {a:0x83,n:'Aux Input 1 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x84,n:'Aux Input 1 Active',u:'',s:1,g:'Aux I/O'},
- {a:0x85,n:'Aux Input 1 Delay',u:'s',s:10,g:'Aux I/O'},
- {a:0x86,n:'Aux Input 2 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x87,n:'Aux Input 2 Active',u:'',s:1,g:'Aux I/O'},
+ // Aux Inputs 1-5 (params 33-47: Set, Delay, Active)
+ // DI1-2: 2 regs (fn, delay) — no separate Active register
+ // DI3-5: 3 regs (fn, delay, active)
+ {a:0x83,n:'Reserved (0x83)',u:'',s:1,g:'Aux I/O'},
+ {a:0x84,n:'Reserved (0x84)',u:'',s:1,g:'Aux I/O'},
+ {a:0x85,n:'Aux Input 1 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x86,n:'Aux Input 1 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x87,n:'Aux Input 2 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x88,n:'Aux Input 2 Delay',u:'s',s:10,g:'Aux I/O'},
  {a:0x89,n:'Aux Input 3 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x8A,n:'Aux Input 3 Active',u:'',s:1,g:'Aux I/O'},
- {a:0x8B,n:'Aux Input 3 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8A,n:'Aux Input 3 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8B,n:'Aux Input 3 Active',u:'',s:1,g:'Aux I/O'},
  {a:0x8C,n:'Aux Input 4 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x8D,n:'Aux Input 4 Active',u:'',s:1,g:'Aux I/O'},
- {a:0x8E,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8D,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8E,n:'Aux Input 4 Active',u:'',s:1,g:'Aux I/O'},
  {a:0x8F,n:'Aux Input 5 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x90,n:'Aux Input 5 Active',u:'',s:1,g:'Aux I/O'},
- {a:0x91,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x90,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x91,n:'Aux Input 5 Active',u:'',s:1,g:'Aux I/O'},
  // Crank Disconnect (params 51-56)
  {a:0x95,n:'Crank Disc. Voltage',u:'V',s:1,g:'Crank Disconnect'},
  {a:0x96,n:'Crank Disc. Frequency',u:'Hz',s:10,g:'Crank Disconnect'},
@@ -1670,7 +1672,7 @@ const CFG_MAP=[
 ];
 /* Lookup labels from HSC941 User Manual (Tables 11-13) */
 const LBL_AUX_OUT={0:'Not Used',1:'Common Alarm',2:'ETS Solenoid',3:'Idle Control',4:'Preheat',5:'Gen Close',6:'Excitation',7:'Gen Open',8:'Speed Up',9:'Speed Down',10:'Running Output',11:'Fuel Pump',12:'High-speed',13:'Auto Mode',14:'Fuel Relay',15:'Choke On',16:'Cooling Fan',17:'Reserved'};
-const LBL_AUX_IN={0:'Not Used',1:'High Temp Alarm',2:'Low Oil Press Alarm',3:'Ext. Warning',4:'Ext. Shutdown',5:'Cooling Shutdown',6:'Gen Close Status',7:'60Hz Active',8:'Hi Temp Inhibit',9:'Low OP Inhibit',10:'Remote Start',11:'Low Fuel Warn',12:'Low Coolant Warn',13:'Low Fuel Shutdown',14:'Low Coolant Shutdown',15:'Auto Start Inhibit',16:'Low Oil Level',17:'Reserved',18:'Reserved',19:'Reserved',20:'Reserved'};
+const LBL_AUX_IN={0:'Not Used',1:'High Temp Alarm',2:'Low Oil Press Alarm',3:'Ext. Warning',4:'Ext. Shutdown',5:'Cooling Shutdown',6:'Gen Close Status',7:'60Hz Active',8:'Hi Temp Inhibit',9:'Low OP Inhibit',10:'Remote Start',11:'Low Fuel Warn',12:'Low Coolant Warn',13:'Low Fuel Shutdown',14:'Low Coolant Shutdown',15:'Auto Start Inhibit',16:'Low Oil Level'};
 const LBL_SNSR={0:'None',1:'Custom Res',2:'VDO',3:'SGH',4:'SGD',5:'CURTIS',6:'DATCON',7:'VOLVO-EC',8:'SGX',9:'(4\u201320)mA',10:'(0\u20135)V',11:'Rsvd',12:'Rsvd'};
 const LBL_SNSR_LVL={0:'None',1:'Custom Res',2:'SGH',3:'SGD',4:'(4\u201320)mA',5:'(0\u20135)V',6:'Rsvd',7:'Rsvd'};
 const LBL_AUX_REUSE={0:'Digital Input 6',1:'Temp Sensor',2:'Pressure Sensor',3:'Level Sensor'};
@@ -1679,8 +1681,8 @@ const LBL_ACT={0:'Closed',1:'Open'};
 const LBL_INHIBIT={0:'Enabled',1:'Inhibited'};
 const CFG_LBL={};
 [0x7F,0x80,0x81,0x82].forEach(a=>CFG_LBL[a]=LBL_AUX_OUT);
-[0x83,0x86,0x89,0x8C,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
-[0x84,0x87,0x8A,0x8D,0x90].forEach(a=>CFG_LBL[a]=LBL_ACT);
+[0x85,0x87,0x89,0x8C,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
+[0x8B,0x8E,0x91].forEach(a=>CFG_LBL[a]=LBL_ACT);
 CFG_LBL[0xB0]=LBL_SNSR;CFG_LBL[0xB1]=LBL_SNSR;CFG_LBL[0xB2]=LBL_AUX_REUSE;CFG_LBL[0xB3]=LBL_SNSR;
 CFG_LBL[0xB4]=LBL_INHIBIT;[0xB5,0xB6,0xB7].forEach(a=>CFG_LBL[a]=LBL_SNSR_OPEN);
 
@@ -1740,7 +1742,7 @@ function relabelIO(d){
  const ioMap=[
   {io:'aux_out1',a:0x7F,t:LBL_AUX_OUT},{io:'aux_out2',a:0x80,t:LBL_AUX_OUT},
   {io:'aux_out3',a:0x81,t:LBL_AUX_OUT},{io:'aux_out4',a:0x82,t:LBL_AUX_OUT},
-  {io:'aux_in1',a:0x83,t:LBL_AUX_IN},{io:'aux_in2',a:0x86,t:LBL_AUX_IN},
+  {io:'aux_in1',a:0x85,t:LBL_AUX_IN},{io:'aux_in2',a:0x87,t:LBL_AUX_IN},
   {io:'aux_in3',a:0x89,t:LBL_AUX_IN},{io:'aux_in4',a:0x8C,t:LBL_AUX_IN},
   {io:'aux_in5',a:0x8F,t:LBL_AUX_IN},{io:'aux_in6',a:0xBB,t:LBL_AUX_IN}
  ];
