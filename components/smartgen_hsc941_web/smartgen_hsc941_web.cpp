@@ -1570,6 +1570,12 @@ const CFG_MAP=[
  // Speed (params 28-29)
  {a:0x6B,n:'Speed Signal Delay',u:'s',s:10,g:'Speed'},
  {a:0x6C,n:'Rated Speed',u:'RPM',s:1,g:'Speed'},
+ // Aux Input Active state (0=Closed, 1=Open) — stored separately from Function/Delay
+ {a:0x6D,n:'Aux Input 1 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x6E,n:'Aux Input 2 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x6F,n:'Aux Input 3 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x70,n:'Aux Input 4 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x71,n:'Aux Input 5 Active',u:'',s:1,g:'Aux I/O'},
  // Battery (params 35-37, x10)
  {a:0x72,n:'Charging Failure Voltage',u:'V',s:10,g:'Battery'},
  {a:0x73,n:'Battery Over Voltage',u:'V',s:10,g:'Battery'},
@@ -1590,9 +1596,9 @@ const CFG_MAP=[
  {a:0x80,n:'Aux Output 2 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x81,n:'Aux Output 3 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x82,n:'Aux Output 4 Function',u:'',s:1,g:'Aux I/O'},
- // Aux Inputs 1-5 (params 33-47: Set, Delay, Active)
- // DI1-2: 2 regs (fn, delay) — no separate Active register
- // DI3-5: 3 regs (fn, delay, active)
+ // Aux Inputs 1-5: Function & Delay grouped here; Active is at 0x6D-0x71
+ // DI1-2: 2 regs (fn, delay)
+ // DI3-5: 2 regs (fn, delay) + 1 unknown at 0x8B/0x8E/0x91
  {a:0x83,n:'Reserved (0x83)',u:'',s:1,g:'Aux I/O'},
  {a:0x84,n:'Reserved (0x84)',u:'',s:1,g:'Aux I/O'},
  {a:0x85,n:'Aux Input 1 Function',u:'',s:1,g:'Aux I/O'},
@@ -1601,13 +1607,13 @@ const CFG_MAP=[
  {a:0x88,n:'Aux Input 2 Delay',u:'s',s:10,g:'Aux I/O'},
  {a:0x89,n:'Aux Input 3 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x8A,n:'Aux Input 3 Delay',u:'s',s:10,g:'Aux I/O'},
- {a:0x8B,n:'Aux Input 3 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x8B,n:'Reserved (0x8B)',u:'',s:1,g:'Aux I/O'},
  {a:0x8C,n:'Aux Input 4 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x8D,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
- {a:0x8E,n:'Aux Input 4 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x8E,n:'Reserved (0x8E)',u:'',s:1,g:'Aux I/O'},
  {a:0x8F,n:'Aux Input 5 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x90,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
- {a:0x91,n:'Aux Input 5 Active',u:'',s:1,g:'Aux I/O'},
+ {a:0x91,n:'Reserved (0x91)',u:'',s:1,g:'Aux I/O'},
  // Crank Disconnect (params 51-56)
  {a:0x95,n:'Crank Disc. Voltage',u:'V',s:1,g:'Crank Disconnect'},
  {a:0x96,n:'Crank Disc. Frequency',u:'Hz',s:10,g:'Crank Disconnect'},
@@ -1683,6 +1689,7 @@ const CFG_LBL={};
 [0x7F,0x80,0x81,0x82].forEach(a=>CFG_LBL[a]=LBL_AUX_OUT);
 [0x85,0x87,0x89,0x8C,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
 [0x8B,0x8E,0x91].forEach(a=>CFG_LBL[a]=LBL_ACT);
+[0x6D,0x6E,0x6F,0x70,0x71].forEach(a=>CFG_LBL[a]=LBL_ACT);
 CFG_LBL[0xB0]=LBL_SNSR;CFG_LBL[0xB1]=LBL_SNSR;CFG_LBL[0xB2]=LBL_AUX_REUSE;CFG_LBL[0xB3]=LBL_SNSR;
 CFG_LBL[0xB4]=LBL_INHIBIT;[0xB5,0xB6,0xB7].forEach(a=>CFG_LBL[a]=LBL_SNSR_OPEN);
 
