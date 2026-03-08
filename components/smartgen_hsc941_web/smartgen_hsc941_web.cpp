@@ -1536,9 +1536,11 @@ function renderRuntimeChart(days){
 /* ── Controller Config Viewer ── */
 const CFG_START=0x42;
 const CFG_MAP=[
- // DI4 Function & Delay — confirmed at 0x4B-0x4C by live register test
+ // DI4-5 Function & Delay — confirmed by live register tests
  {a:0x4B,n:'Aux Input 4 Function',u:'',s:1,g:'Aux I/O'},
  {a:0x4C,n:'Aux Input 4 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x4D,n:'Aux Input 5 Function',u:'',s:1,g:'Aux I/O'},
+ {a:0x4E,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
  // Timing (params 1-15)
  {a:0x50,n:'Start Delay',u:'s',s:10,g:'Timing'},
  {a:0x51,n:'Stop Delay',u:'s',s:10,g:'Timing'},
@@ -1614,8 +1616,8 @@ const CFG_MAP=[
  {a:0x8C,n:'Reserved (0x8C)',u:'',s:1,g:'Aux I/O'},
  {a:0x8D,n:'Reserved (0x8D)',u:'',s:1,g:'Aux I/O'},
  {a:0x8E,n:'Reserved (0x8E)',u:'',s:1,g:'Aux I/O'},
- {a:0x8F,n:'Aux Input 5 Function',u:'',s:1,g:'Aux I/O'},
- {a:0x90,n:'Aux Input 5 Delay',u:'s',s:10,g:'Aux I/O'},
+ {a:0x8F,n:'Reserved (0x8F)',u:'',s:1,g:'Aux I/O'},
+ {a:0x90,n:'Reserved (0x90)',u:'',s:1,g:'Aux I/O'},
  {a:0x91,n:'Reserved (0x91)',u:'',s:1,g:'Aux I/O'},
  // Crank Disconnect (params 51-56)
  {a:0x95,n:'Crank Disc. Voltage',u:'V',s:1,g:'Crank Disconnect'},
@@ -1690,7 +1692,7 @@ const LBL_ACT={0:'Closed',1:'Open'};
 const LBL_INHIBIT={0:'Enabled',1:'Inhibited'};
 const CFG_LBL={};
 [0x7F,0x80,0x81,0x82].forEach(a=>CFG_LBL[a]=LBL_AUX_OUT);
-[0x85,0x87,0x89,0x4B,0x8F,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
+[0x85,0x87,0x89,0x4B,0x4D,0xBB].forEach(a=>CFG_LBL[a]=LBL_AUX_IN);
 [0x8B,0x8E,0x91].forEach(a=>CFG_LBL[a]=LBL_ACT);
 [0x6D,0x6E,0x6F,0x70,0x71].forEach(a=>CFG_LBL[a]=LBL_ACT);
 CFG_LBL[0xB0]=LBL_SNSR;CFG_LBL[0xB1]=LBL_SNSR;CFG_LBL[0xB2]=LBL_AUX_REUSE;CFG_LBL[0xB3]=LBL_SNSR;
@@ -1754,7 +1756,7 @@ function relabelIO(d){
   {io:'aux_out3',a:0x81,t:LBL_AUX_OUT},{io:'aux_out4',a:0x82,t:LBL_AUX_OUT},
   {io:'aux_in1',a:0x85,t:LBL_AUX_IN},{io:'aux_in2',a:0x87,t:LBL_AUX_IN},
   {io:'aux_in3',a:0x89,t:LBL_AUX_IN},{io:'aux_in4',a:0x4B,t:LBL_AUX_IN},
-  {io:'aux_in5',a:0x8F,t:LBL_AUX_IN},{io:'aux_in6',a:0xBB,t:LBL_AUX_IN}
+  {io:'aux_in5',a:0x4D,t:LBL_AUX_IN},{io:'aux_in6',a:0xBB,t:LBL_AUX_IN}
  ];
  ioMap.forEach(m=>{
   const idx=m.a-s;if(idx<0||idx>=dt.length)return;
