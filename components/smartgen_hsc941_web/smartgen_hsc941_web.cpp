@@ -1670,7 +1670,7 @@ const CFG_MAP=[
 ];
 /* Lookup labels from HSC941 User Manual (Tables 11-13) */
 const LBL_AUX_OUT={0:'Not Used',1:'Common Alarm',2:'ETS Solenoid',3:'Idle Control',4:'Preheat',5:'Gen Close',6:'Excitation',7:'Gen Open',8:'Speed Up',9:'Speed Down',10:'Running Output',11:'Fuel Pump',12:'High-speed',13:'Auto Mode',14:'Fuel Relay',15:'Choke On',16:'Cooling Fan',17:'Reserved'};
-const LBL_AUX_IN={0:'Not Used',1:'High Temp Alarm',2:'Low Oil Press Alarm',3:'Ext. Warning',4:'Ext. Shutdown',5:'Cooling Shutdown',6:'Gen Close Status',7:'60Hz Active',8:'Hi Temp Inhibit',9:'Low OP Inhibit',10:'Remote Start',11:'Low Fuel Warn',12:'Low Coolant Warn',13:'Low Fuel Shutdown',14:'Low Coolant Shutdown',15:'Auto Start Inhibit',16:'Low Oil Level',20:'Low Press Shutdown'};
+const LBL_AUX_IN={0:'Not Used',1:'High Temp Alarm',2:'Low Oil Press Alarm',3:'Ext. Warning',4:'Ext. Shutdown',5:'Cooling Shutdown',6:'Gen Close Status',7:'60Hz Active',8:'Hi Temp Inhibit',9:'Low OP Inhibit',10:'Remote Start',11:'Low Fuel Warn',12:'Low Coolant Warn',13:'Low Fuel Shutdown',14:'Low Coolant Shutdown',15:'Auto Start Inhibit',16:'Low Oil Level',17:'Reserved',18:'Reserved',19:'Reserved',20:'Reserved'};
 const LBL_SNSR={0:'None',1:'Custom Res',2:'VDO',3:'SGH',4:'SGD',5:'CURTIS',6:'DATCON',7:'VOLVO-EC',8:'SGX',9:'(4\u201320)mA',10:'(0\u20135)V',11:'Rsvd',12:'Rsvd'};
 const LBL_SNSR_LVL={0:'None',1:'Custom Res',2:'SGH',3:'SGD',4:'(4\u201320)mA',5:'(0\u20135)V',6:'Rsvd',7:'Rsvd'};
 const LBL_AUX_REUSE={0:'Digital Input 6',1:'Temp Sensor',2:'Pressure Sensor',3:'Level Sensor'};
