@@ -152,15 +152,59 @@ sensor:
     gen_voltage_a:
       name: "${friendly_name} Voltage"
       id: sen_voltage
+      on_value:
+        then:
+          - lvgl.arc.update:
+              id: arc_voltage
+              value: !lambda return (int)x;
+          - lvgl.label.update:
+              id: lbl_voltage_val
+              text: !lambda |-
+                char buf[8];
+                snprintf(buf, sizeof(buf), "%.0f", x);
+                return std::string(buf);
     gen_frequency:
       name: "${friendly_name} Frequency"
       id: sen_frequency
+      on_value:
+        then:
+          - lvgl.arc.update:
+              id: arc_frequency
+              value: !lambda return (int)(x * 100);
+          - lvgl.label.update:
+              id: lbl_freq_val
+              text: !lambda |-
+                char buf[8];
+                snprintf(buf, sizeof(buf), "%.1f", x);
+                return std::string(buf);
     engine_speed:
       name: "${friendly_name} Engine Speed"
       id: sen_rpm
+      on_value:
+        then:
+          - lvgl.arc.update:
+              id: arc_rpm
+              value: !lambda return (int)x;
+          - lvgl.label.update:
+              id: lbl_rpm_val
+              text: !lambda |-
+                char buf[8];
+                snprintf(buf, sizeof(buf), "%.0f", x);
+                return std::string(buf);
     output_load_percent:
       name: "${friendly_name} Output Load"
       id: sen_load
+      on_value:
+        then:
+          - lvgl.arc.update:
+              id: arc_load
+              value: !lambda return (int)x;
+          - lvgl.label.update:
+              id: lbl_load_val
+              text: !lambda |-
+                char buf[8];
+                snprintf(buf, sizeof(buf), "%.0f", x);
+                return std::string(buf);
     water_temperature:
       name: "${friendly_name} Coolant Temperature"
       id: sen_water_temp
@@ -410,11 +454,192 @@ lvgl:
                 bg_color: 0x0c0e14
                 bg_opa: COVER
                 widgets:
-                  - label:
-                      text: "Monitor — coming soon"
-                      text_color: 0x6b7394
-                      text_font: montserrat_18
-                      align: CENTER
+                  # ---- Arc Gauges Row ----
+                  - obj:
+                      width: 100%
+                      height: 260
+                      bg_opa: TRANSP
+                      layout:
+                        type: FLEX
+                        flex_flow: ROW
+                        flex_align_main: SPACE_EVENLY
+                      widgets:
+                        # -- Voltage Gauge Card --
+                        - obj:
+                            styles: style_card
+                            width: 235
+                            height: 244
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_main: CENTER
+                              flex_align_cross: CENTER
+                            widgets:
+                              - arc:
+                                  id: arc_voltage
+                                  width: 140
+                                  height: 140
+                                  min_value: 0
+                                  max_value: 300
+                                  value: 0
+                                  adjustable: false
+                                  arc_width: 10
+                                  arc_color: 0x3b82f6
+                                  indicator:
+                                    arc_width: 10
+                                    arc_color: 0x3b82f6
+                                  knob:
+                                    bg_opa: TRANSP
+                                  main:
+                                    arc_width: 10
+                                    arc_color: 0x1e2235
+                                  widgets:
+                                    - label:
+                                        id: lbl_voltage_val
+                                        styles: style_value
+                                        text: "---"
+                                        align: CENTER
+                                    - label:
+                                        id: lbl_voltage_unit
+                                        styles: style_dim
+                                        text: "V"
+                                        align: CENTER
+                                        y: 20
+                              - label:
+                                  styles: style_card_header
+                                  text: "Voltage"
+                        # -- Frequency Gauge Card --
+                        - obj:
+                            styles: style_card
+                            width: 235
+                            height: 244
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_main: CENTER
+                              flex_align_cross: CENTER
+                            widgets:
+                              - arc:
+                                  id: arc_frequency
+                                  width: 140
+                                  height: 140
+                                  min_value: 0
+                                  max_value: 6500
+                                  value: 0
+                                  adjustable: false
+                                  arc_width: 10
+                                  arc_color: 0x22c55e
+                                  indicator:
+                                    arc_width: 10
+                                    arc_color: 0x22c55e
+                                  knob:
+                                    bg_opa: TRANSP
+                                  main:
+                                    arc_width: 10
+                                    arc_color: 0x1e2235
+                                  widgets:
+                                    - label:
+                                        id: lbl_freq_val
+                                        styles: style_value
+                                        text: "---"
+                                        align: CENTER
+                                    - label:
+                                        id: lbl_freq_unit
+                                        styles: style_dim
+                                        text: "Hz"
+                                        align: CENTER
+                                        y: 20
+                              - label:
+                                  styles: style_card_header
+                                  text: "Frequency"
+                        # -- RPM Gauge Card --
+                        - obj:
+                            styles: style_card
+                            width: 235
+                            height: 244
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_main: CENTER
+                              flex_align_cross: CENTER
+                            widgets:
+                              - arc:
+                                  id: arc_rpm
+                                  width: 140
+                                  height: 140
+                                  min_value: 0
+                                  max_value: 2000
+                                  value: 0
+                                  adjustable: false
+                                  arc_width: 10
+                                  arc_color: 0xf59e0b
+                                  indicator:
+                                    arc_width: 10
+                                    arc_color: 0xf59e0b
+                                  knob:
+                                    bg_opa: TRANSP
+                                  main:
+                                    arc_width: 10
+                                    arc_color: 0x1e2235
+                                  widgets:
+                                    - label:
+                                        id: lbl_rpm_val
+                                        styles: style_value
+                                        text: "---"
+                                        align: CENTER
+                                    - label:
+                                        id: lbl_rpm_unit
+                                        styles: style_dim
+                                        text: "RPM"
+                                        align: CENTER
+                                        y: 20
+                              - label:
+                                  styles: style_card_header
+                                  text: "RPM"
+                        # -- Load Gauge Card --
+                        - obj:
+                            styles: style_card
+                            width: 235
+                            height: 244
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_main: CENTER
+                              flex_align_cross: CENTER
+                            widgets:
+                              - arc:
+                                  id: arc_load
+                                  width: 140
+                                  height: 140
+                                  min_value: 0
+                                  max_value: 100
+                                  value: 0
+                                  adjustable: false
+                                  arc_width: 10
+                                  arc_color: 0x06b6d4
+                                  indicator:
+                                    arc_width: 10
+                                    arc_color: 0x06b6d4
+                                  knob:
+                                    bg_opa: TRANSP
+                                  main:
+                                    arc_width: 10
+                                    arc_color: 0x1e2235
+                                  widgets:
+                                    - label:
+                                        id: lbl_load_val
+                                        styles: style_value
+                                        text: "---"
+                                        align: CENTER
+                                    - label:
+                                        id: lbl_load_unit
+                                        styles: style_dim
+                                        text: "%"
+                                        align: CENTER
+                                        y: 20
+                              - label:
+                                  styles: style_card_header
+                                  text: "Load"
               - name: "Controls"
                 id: tab_controls
                 bg_color: 0x0c0e14
