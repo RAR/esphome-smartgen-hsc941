@@ -10,6 +10,12 @@ substitutions:
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
+  on_boot:
+    priority: -10
+    then:
+      - script.execute:
+          id: add_event
+          message: "System booted"
 
 esp32:
   board: esp32-p4-evboard
@@ -312,11 +318,17 @@ binary_sensor:
                           id: lbl_alarm_status
                           text: "WARNING ACTIVE"
                           text_color: 0xf59e0b
+                      - script.execute:
+                          id: add_event
+                          message: "WARNING activated"
                     else:
                       - lvgl.label.update:
                           id: lbl_alarm_status
                           text: "All Normal"
                           text_color: 0x22c55e
+                      - script.execute:
+                          id: add_event
+                          message: "WARNING cleared"
     common_shutdown:
       name: "${friendly_name} Common Shutdown"
       id: bs_shutdown
@@ -330,6 +342,9 @@ binary_sensor:
                     id: lbl_alarm_status
                     text: "SHUTDOWN ACTIVE"
                     text_color: 0xef4444
+                - script.execute:
+                    id: add_event
+                    message: "SHUTDOWN activated"
               else:
                 - if:
                     condition:
@@ -344,6 +359,9 @@ binary_sensor:
                           id: lbl_alarm_status
                           text: "All Normal"
                           text_color: 0x22c55e
+                - script.execute:
+                    id: add_event
+                    message: "SHUTDOWN cleared"
 
     # --- Operating Modes ---
     in_auto_mode:
@@ -430,6 +448,50 @@ button:
     fault_reset:
       name: "${friendly_name} Fault Reset"
       id: btn_fault_reset
+
+# ============================================================
+#  Globals
+# ============================================================
+globals:
+  - id: event_log
+    type: 'std::vector<std::string>'
+    restore_value: no
+    initial_value: '{}'
+
+# ============================================================
+#  Scripts
+# ============================================================
+script:
+  - id: add_event
+    parameters:
+      message: string
+    then:
+      - lambda: |-
+          auto &log = id(event_log);
+          auto time = ::time(nullptr);
+          auto *tm = ::localtime(&time);
+          char ts[20];
+          snprintf(ts, sizeof(ts), "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+          std::string entry = std::string(ts) + "  " + message;
+          log.insert(log.begin(), entry);
+          if (log.size() > 20) log.resize(20);
+      - script.execute: refresh_event_log
+
+  - id: refresh_event_log
+    then:
+      - lambda: |-
+          auto &log = id(event_log);
+          auto *container = id(event_log_container);
+          uint32_t count = lv_obj_get_child_cnt(container);
+          for (uint32_t i = 0; i < count && i < 20; i++) {
+            auto *lbl = lv_obj_get_child(container, i);
+            if (i < log.size()) {
+              lv_label_set_text(lbl, log[i].c_str());
+              lv_obj_clear_flag(lbl, LV_OBJ_FLAG_HIDDEN);
+            } else {
+              lv_obj_add_flag(lbl, LV_OBJ_FLAG_HIDDEN);
+            }
+          }
 
 # ============================================================
 #  LVGL Interface — Dark Theme Tabview Shell
@@ -1118,12 +1180,150 @@ lvgl:
                 id: tab_history
                 bg_color: 0x0c0e14
                 bg_opa: COVER
+                layout:
+                  type: FLEX
+                  flex_flow: COLUMN
+                pad_all: 8
                 widgets:
                   - label:
-                      text: "History — coming soon"
-                      text_color: 0x6b7394
-                      text_font: montserrat_18
-                      align: CENTER
+                      styles: style_card_header
+                      text: "EVENT LOG"
+                      pad_bottom: 8
+                  - obj:
+                      id: event_log_container
+                      width: 100%
+                      flex_grow: 1
+                      bg_color: 0x1a1e2b
+                      border_color: 0x252a3a
+                      border_width: 1
+                      radius: 10
+                      pad_all: 10
+                      scrollable: true
+                      layout:
+                        type: FLEX
+                        flex_flow: COLUMN
+                        pad_row: 4
+                      widgets:
+                        - label:
+                            id: lbl_evt_1
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_2
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_3
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_4
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_5
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_6
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_7
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_8
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_9
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_10
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_11
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_12
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_13
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_14
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_15
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_16
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_17
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_18
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_19
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
+                        - label:
+                            id: lbl_evt_20
+                            text: ""
+                            text_color: 0x6b7394
+                            text_font: montserrat_12
+                            width: 100%
 
 # ============================================================
 #  Interval — Status Bar Updates
