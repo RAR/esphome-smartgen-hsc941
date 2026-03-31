@@ -290,3 +290,148 @@ button:
     fault_reset:
       name: "${friendly_name} Fault Reset"
       id: btn_fault_reset
+
+# ============================================================
+#  LVGL Interface — Dark Theme Tabview Shell
+# ============================================================
+lvgl:
+  displays:
+    - my_display
+  touchscreens:
+    - my_touchscreen
+
+  # ---------- style definitions ----------
+  style_definitions:
+    - id: style_card
+      bg_color: 0x1a1e2b
+      border_color: 0x252a3a
+      border_width: 1
+      radius: 10
+      pad_all: 10
+
+    - id: style_card_header
+      text_color: 0x6b7394
+      text_font: montserrat_14
+
+    - id: style_value
+      text_color: 0xdee2ec
+      text_font: montserrat_28
+
+    - id: style_value_small
+      text_color: 0xdee2ec
+      text_font: montserrat_18
+
+    - id: style_dim
+      text_color: 0x6b7394
+      text_font: montserrat_14
+
+    - id: style_label_row_key
+      text_color: 0x6b7394
+      text_font: montserrat_14
+
+    - id: style_label_row_val
+      text_color: 0xdee2ec
+      text_font: montserrat_16
+
+  # ---------- top-level configuration ----------
+  top_layer:
+    widgets:
+      # ---- Status Bar ----
+      - obj:
+          width: 1024
+          height: 36
+          x: 0
+          y: 0
+          bg_color: 0x141720
+          bg_opa: COVER
+          border_color: 0x252a3a
+          border_width: 1
+          border_side: BOTTOM
+          pad_left: 12
+          pad_right: 12
+          radius: 0
+          layout:
+            type: FLEX
+            flex_flow: ROW
+            flex_align_main: SPACE_BETWEEN
+            flex_align_cross: CENTER
+          widgets:
+            # Left: title
+            - label:
+                text: "HSC941 Generator"
+                text_color: 0xdee2ec
+                text_font: montserrat_16
+            # Right: badges container
+            - obj:
+                width: SIZE_CONTENT
+                height: SIZE_CONTENT
+                bg_opa: TRANSP
+                pad_column: 6
+                layout:
+                  type: FLEX
+                  flex_flow: ROW
+                  flex_align_cross: CENTER
+                widgets:
+                  - label:
+                      id: lbl_conn_badge
+                      text: "OFFLINE"
+                      text_color: 0xef4444
+                      text_font: montserrat_12
+                  - label:
+                      id: lbl_mode_badge
+                      text: "---"
+                      text_color: 0x6b7394
+                      text_font: montserrat_12
+
+  # ---------- pages ----------
+  pages:
+    - id: main_page
+      bg_color: 0x0c0e14
+      bg_opa: COVER
+      pad_all: 0
+      widgets:
+        - tabview:
+            id: main_tabs
+            width: 1024
+            height: 564
+            y: 36
+            position: TOP
+            size: 40
+            bg_color: 0x0c0e14
+            bg_opa: COVER
+            tab_style:
+              text_font: montserrat_14
+              text_color: 0x6b7394
+            tab_selected_style:
+              text_color: 0x3b82f6
+            tabs:
+              - name: "Monitor"
+                id: tab_monitor
+                bg_color: 0x0c0e14
+                bg_opa: COVER
+                widgets:
+                  - label:
+                      text: "Monitor — coming soon"
+                      text_color: 0x6b7394
+                      text_font: montserrat_18
+                      align: CENTER
+              - name: "Controls"
+                id: tab_controls
+                bg_color: 0x0c0e14
+                bg_opa: COVER
+                widgets:
+                  - label:
+                      text: "Controls — coming soon"
+                      text_color: 0x6b7394
+                      text_font: montserrat_18
+                      align: CENTER
+              - name: "History"
+                id: tab_history
+                bg_color: 0x0c0e14
+                bg_opa: COVER
+                widgets:
+                  - label:
+                      text: "History — coming soon"
+                      text_color: 0x6b7394
+                      text_font: montserrat_18
+                      align: CENTER
