@@ -959,12 +959,161 @@ lvgl:
                 id: tab_controls
                 bg_color: 0x0c0e14
                 bg_opa: COVER
+                layout:
+                  type: FLEX
+                  flex_flow: COLUMN
+                  flex_align_cross: CENTER
+                pad_all: 16
+                pad_row: 16
                 widgets:
+                  # ---- ENGINE Section ----
                   - label:
-                      text: "Controls — coming soon"
-                      text_color: 0x6b7394
-                      text_font: montserrat_18
-                      align: CENTER
+                      styles: style_card_header
+                      text: "ENGINE"
+                      width: 500
+                  - obj:
+                      width: 500
+                      height: 80
+                      bg_opa: TRANSP
+                      pad_column: 12
+                      layout:
+                        type: FLEX
+                        flex_flow: ROW
+                      widgets:
+                        - button:
+                            id: lv_btn_start
+                            flex_grow: 1
+                            height: 100%
+                            bg_color: 0x16a34a
+                            radius: 10
+                            on_press:
+                              then:
+                                - button.press: btn_start
+                            widgets:
+                              - label:
+                                  text: "START"
+                                  align: CENTER
+                                  text_color: 0xFFFFFF
+                                  text_font: montserrat_20
+                        - button:
+                            id: lv_btn_stop
+                            flex_grow: 1
+                            height: 100%
+                            bg_color: 0xdc2626
+                            radius: 10
+                            on_press:
+                              then:
+                                - button.press: btn_stop
+                            widgets:
+                              - label:
+                                  text: "STOP"
+                                  align: CENTER
+                                  text_color: 0xFFFFFF
+                                  text_font: montserrat_20
+                  # ---- MODE Section ----
+                  - label:
+                      styles: style_card_header
+                      text: "MODE"
+                      width: 500
+                  - obj:
+                      width: 500
+                      height: 80
+                      bg_opa: TRANSP
+                      pad_column: 12
+                      layout:
+                        type: FLEX
+                        flex_flow: ROW
+                      widgets:
+                        - button:
+                            id: lv_btn_auto
+                            flex_grow: 1
+                            height: 100%
+                            bg_color: 0x2563eb
+                            radius: 10
+                            on_press:
+                              then:
+                                - button.press: btn_auto
+                            widgets:
+                              - label:
+                                  text: "AUTO"
+                                  align: CENTER
+                                  text_color: 0xFFFFFF
+                                  text_font: montserrat_20
+                        - button:
+                            id: lv_btn_manual
+                            flex_grow: 1
+                            height: 100%
+                            bg_color: 0xd97706
+                            radius: 10
+                            on_press:
+                              then:
+                                - button.press: btn_manual
+                            widgets:
+                              - label:
+                                  text: "MANUAL"
+                                  align: CENTER
+                                  text_color: 0x000000
+                                  text_font: montserrat_20
+                  # ---- TRANSFER SWITCH Section ----
+                  - label:
+                      styles: style_card_header
+                      text: "TRANSFER SWITCH"
+                      width: 500
+                  - obj:
+                      width: 500
+                      height: 80
+                      bg_opa: TRANSP
+                      pad_column: 12
+                      layout:
+                        type: FLEX
+                        flex_flow: ROW
+                      widgets:
+                        - button:
+                            id: lv_btn_xfer_on
+                            flex_grow: 1
+                            height: 100%
+                            bg_color: 0x0d9488
+                            radius: 10
+                            on_press:
+                              then:
+                                - button.press: btn_xfer_on
+                            widgets:
+                              - label:
+                                  text: "ON"
+                                  align: CENTER
+                                  text_color: 0xFFFFFF
+                                  text_font: montserrat_20
+                        - button:
+                            id: lv_btn_xfer_off
+                            flex_grow: 1
+                            height: 100%
+                            bg_color: 0x9f1239
+                            radius: 10
+                            on_press:
+                              then:
+                                - button.press: btn_xfer_off
+                            widgets:
+                              - label:
+                                  text: "OFF"
+                                  align: CENTER
+                                  text_color: 0xFFFFFF
+                                  text_font: montserrat_20
+                  # ---- FAULT RESET Button ----
+                  - button:
+                      id: lv_btn_fault_reset
+                      width: 500
+                      height: 70
+                      bg_color: 0x7c3aed
+                      radius: 10
+                      on_press:
+                        then:
+                          - button.press: btn_fault_reset
+                      widgets:
+                        - label:
+                            text: "FAULT RESET"
+                            align: CENTER
+                            text_color: 0xFFFFFF
+                            text_font: montserrat_20
               - name: "History"
                 id: tab_history
                 bg_color: 0x0c0e14
