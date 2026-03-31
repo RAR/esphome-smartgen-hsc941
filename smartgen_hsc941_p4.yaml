@@ -208,21 +208,69 @@ sensor:
     water_temperature:
       name: "${friendly_name} Coolant Temperature"
       id: sen_water_temp
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: lbl_wt
+              text: !lambda |-
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%.0f °C", x);
+                return std::string(buf);
     oil_pressure:
       name: "${friendly_name} Oil Pressure"
       id: sen_oil_pressure
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: lbl_op
+              text: !lambda |-
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%.0f kPa", x);
+                return std::string(buf);
     battery_voltage:
       name: "${friendly_name} Battery Voltage"
       id: sen_battery
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: lbl_batt
+              text: !lambda |-
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%.1f V", x);
+                return std::string(buf);
     charge_voltage:
       name: "${friendly_name} D+ Charge Voltage"
       id: sen_charge
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: lbl_chg
+              text: !lambda |-
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%.1f V", x);
+                return std::string(buf);
     engine_total_hours:
       name: "${friendly_name} Total Running Hours"
       id: sen_total_hours
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: lbl_hours
+              text: !lambda |-
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%.0f h", x);
+                return std::string(buf);
     total_start_times:
       name: "${friendly_name} Total Starts"
       id: sen_total_starts
+      on_value:
+        then:
+          - lvgl.label.update:
+              id: lbl_starts
+              text: !lambda |-
+                char buf[16];
+                snprintf(buf, sizeof(buf), "%.0f", x);
+                return std::string(buf);
     total_active_power:
       name: "${friendly_name} Total Active Power"
       id: sen_power
@@ -245,9 +293,57 @@ binary_sensor:
     common_warning:
       name: "${friendly_name} Common Warning"
       id: bs_warning
+      on_state:
+        then:
+          - if:
+              condition:
+                binary_sensor.is_on: bs_shutdown
+              then:
+                - lvgl.label.update:
+                    id: lbl_alarm_status
+                    text: "SHUTDOWN ACTIVE"
+                    text_color: 0xef4444
+              else:
+                - if:
+                    condition:
+                      binary_sensor.is_on: bs_warning
+                    then:
+                      - lvgl.label.update:
+                          id: lbl_alarm_status
+                          text: "WARNING ACTIVE"
+                          text_color: 0xf59e0b
+                    else:
+                      - lvgl.label.update:
+                          id: lbl_alarm_status
+                          text: "All Normal"
+                          text_color: 0x22c55e
     common_shutdown:
       name: "${friendly_name} Common Shutdown"
       id: bs_shutdown
+      on_state:
+        then:
+          - if:
+              condition:
+                binary_sensor.is_on: bs_shutdown
+              then:
+                - lvgl.label.update:
+                    id: lbl_alarm_status
+                    text: "SHUTDOWN ACTIVE"
+                    text_color: 0xef4444
+              else:
+                - if:
+                    condition:
+                      binary_sensor.is_on: bs_warning
+                    then:
+                      - lvgl.label.update:
+                          id: lbl_alarm_status
+                          text: "WARNING ACTIVE"
+                          text_color: 0xf59e0b
+                    else:
+                      - lvgl.label.update:
+                          id: lbl_alarm_status
+                          text: "All Normal"
+                          text_color: 0x22c55e
 
     # --- Operating Modes ---
     in_auto_mode:
@@ -640,6 +736,225 @@ lvgl:
                               - label:
                                   styles: style_card_header
                                   text: "Load"
+                  # ---- Bottom Data Row (Engine / Fuel / Alarms) ----
+                  - obj:
+                      width: 100%
+                      height: 230
+                      bg_opa: TRANSP
+                      layout:
+                        type: FLEX
+                        flex_flow: ROW
+                        flex_align_main: START
+                        pad_column: 8
+                      widgets:
+                        # -- Engine Card --
+                        - obj:
+                            styles: style_card
+                            flex_grow: 1
+                            height: 220
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_cross: STRETCH
+                            widgets:
+                              - label:
+                                  styles: style_card_header
+                                  text: "ENGINE"
+                              # Water Temp row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Water Temp"
+                                    - label:
+                                        id: lbl_wt
+                                        styles: style_label_row_val
+                                        text: "-- °C"
+                              # Oil Pressure row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Oil Pressure"
+                                    - label:
+                                        id: lbl_op
+                                        styles: style_label_row_val
+                                        text: "-- kPa"
+                              # Battery row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Battery"
+                                    - label:
+                                        id: lbl_batt
+                                        styles: style_label_row_val
+                                        text: "-- V"
+                              # Charge row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Charge"
+                                    - label:
+                                        id: lbl_chg
+                                        styles: style_label_row_val
+                                        text: "-- V"
+                              # Total Hours row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Total Hours"
+                                    - label:
+                                        id: lbl_hours
+                                        styles: style_label_row_val
+                                        text: "-- h"
+                              # Total Starts row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Total Starts"
+                                    - label:
+                                        id: lbl_starts
+                                        styles: style_label_row_val
+                                        text: "--"
+                        # -- Fuel Card --
+                        - obj:
+                            styles: style_card
+                            flex_grow: 1
+                            height: 220
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_cross: CENTER
+                            widgets:
+                              - label:
+                                  styles: style_card_header
+                                  text: "FUEL"
+                              - label:
+                                  id: lbl_fuel_pct
+                                  text: "--%"
+                                  text_color: 0x22c55e
+                                  text_font: montserrat_36
+                                  align: CENTER
+                              - bar:
+                                  id: bar_fuel
+                                  width: 100%
+                                  height: 18
+                                  min_value: 0
+                                  max_value: 100
+                                  value: 0
+                                  bg_color: 0x1e2235
+                                  radius: 9
+                                  indicator:
+                                    bg_color: 0x22c55e
+                                    radius: 9
+                              # Remaining row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Remaining"
+                                    - label:
+                                        id: lbl_fuel_remain
+                                        styles: style_label_row_val
+                                        text: "-- L"
+                              # Est. Runtime row
+                              - obj:
+                                  height: 22
+                                  width: 100%
+                                  bg_opa: TRANSP
+                                  layout:
+                                    type: FLEX
+                                    flex_flow: ROW
+                                    flex_align_main: SPACE_BETWEEN
+                                    flex_align_cross: CENTER
+                                  widgets:
+                                    - label:
+                                        styles: style_label_row_key
+                                        text: "Est. Runtime"
+                                    - label:
+                                        id: lbl_fuel_runtime
+                                        styles: style_label_row_val
+                                        text: "-- h"
+                        # -- Alarms Card --
+                        - obj:
+                            styles: style_card
+                            flex_grow: 1
+                            height: 220
+                            layout:
+                              type: FLEX
+                              flex_flow: COLUMN
+                              flex_align_cross: CENTER
+                            widgets:
+                              - label:
+                                  styles: style_card_header
+                                  text: "ALARMS"
+                              - label:
+                                  id: lbl_alarm_status
+                                  text: "All Normal"
+                                  text_color: 0x22c55e
+                                  text_font: montserrat_18
+                                  align: CENTER
+                                  pad_top: 20
               - name: "Controls"
                 id: tab_controls
                 bg_color: 0x0c0e14
@@ -660,3 +975,47 @@ lvgl:
                       text_color: 0x6b7394
                       text_font: montserrat_18
                       align: CENTER
+
+# ============================================================
+#  Interval — Status Bar Updates
+# ============================================================
+interval:
+  - interval: 5s
+    then:
+      - if:
+          condition:
+            lambda: |-
+              auto *hub = id(genset);
+              return hub->is_connected();
+          then:
+            - lvgl.label.update:
+                id: lbl_conn_badge
+                text: "CONNECTED"
+                text_color: 0x22c55e
+          else:
+            - lvgl.label.update:
+                id: lbl_conn_badge
+                text: "DISCONNECTED"
+                text_color: 0xef4444
+      - if:
+          condition:
+            binary_sensor.is_on: bs_auto
+          then:
+            - lvgl.label.update:
+                id: lbl_mode_badge
+                text: "AUTO"
+                text_color: 0x3b82f6
+          else:
+            - if:
+                condition:
+                  binary_sensor.is_on: bs_manual
+                then:
+                  - lvgl.label.update:
+                      id: lbl_mode_badge
+                      text: "MANUAL"
+                      text_color: 0xf59e0b
+                else:
+                  - lvgl.label.update:
+                      id: lbl_mode_badge
+                      text: "STOP"
+                      text_color: 0xef4444
