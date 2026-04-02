@@ -159,6 +159,9 @@ class SmartgenHSC941Web : public Component {
   // Maintenance
   const std::array<MaintenanceItem, MAX_MAINT_ITEMS> &get_maint_items() const { return this->maint_items_; }
 
+  // Config
+  bool is_single_phase() const { return this->single_phase_; }
+
   // Fuel
   float get_tank_size() const { return this->tank_size_liters_; }
   float get_burn_rate_idle() const { return this->burn_rate_idle_; }

@@ -16,6 +16,7 @@ AUTO_LOAD = ["sensor", "binary_sensor", "button"]
 MULTI_CONF = True
 
 CONF_FLOW_CONTROL_PIN = "flow_control_pin"
+CONF_RS485_HW_MODE = "rs485_hw_mode"
 CONF_UART_NUM = "uart_num"
 
 smartgen_hsc941_ns = cg.esphome_ns.namespace("smartgen_hsc941")
@@ -29,6 +30,7 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Required(CONF_TX_PIN): pins.internal_gpio_output_pin_number,
         cv.Required(CONF_RX_PIN): pins.internal_gpio_input_pin_number,
         cv.Optional(CONF_FLOW_CONTROL_PIN): pins.internal_gpio_output_pin_number,
+        cv.Optional(CONF_RS485_HW_MODE, default=False): cv.boolean,
         cv.Optional(CONF_UART_NUM, default=1): cv.int_range(min=0, max=2),
         cv.Optional(CONF_UPDATE_INTERVAL, default="5s"): cv.update_interval,
     }
@@ -47,3 +49,5 @@ async def to_code(config):
 
     if CONF_FLOW_CONTROL_PIN in config:
         cg.add(var.set_flow_control_pin(config[CONF_FLOW_CONTROL_PIN]))
+
+    cg.add(var.set_rs485_hw_mode(config[CONF_RS485_HW_MODE]))

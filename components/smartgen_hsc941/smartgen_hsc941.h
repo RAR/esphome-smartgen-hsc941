@@ -36,10 +36,12 @@ class SmartgenHSC941 : public PollingComponent {
   void set_tx_pin(int tx_pin) { this->tx_pin_ = tx_pin; }
   void set_rx_pin(int rx_pin) { this->rx_pin_ = rx_pin; }
   void set_flow_control_pin(int pin) { this->flow_control_pin_ = pin; }
+  void set_rs485_hw_mode(bool enabled) { this->rs485_hw_mode_ = enabled; }
   void set_uart_num(int num) { this->uart_num_ = num; }
 
   // Component overrides
   void setup() override;
+  void loop() override;
   void dump_config() override;
   void update() override;
   float get_setup_priority() const override { return setup_priority::DATA; }
@@ -91,11 +93,29 @@ class SmartgenHSC941 : public PollingComponent {
     return (this->gen_on_load_bs_ && this->gen_on_load_bs_->state);
   }
 
-  // Temperature sensor accessors (for companion components)
+  // Sensor accessors (for companion components: web, display)
+  sensor::Sensor *get_gen_voltage_a_sensor() const { return this->gen_voltage_a_sensor_; }
+  sensor::Sensor *get_gen_voltage_b_sensor() const { return this->gen_voltage_b_sensor_; }
+  sensor::Sensor *get_gen_frequency_sensor() const { return this->gen_frequency_sensor_; }
+  sensor::Sensor *get_engine_speed_sensor() const { return this->engine_speed_sensor_; }
   sensor::Sensor *get_water_temp_sensor() const { return this->water_temp_sensor_; }
+  sensor::Sensor *get_oil_pressure_sensor() const { return this->oil_pressure_sensor_; }
   sensor::Sensor *get_aux_sensor_1() const { return this->aux_sensor_1_sensor_; }
   sensor::Sensor *get_total_hours_sensor() const { return this->engine_total_hours_sensor_; }
+  sensor::Sensor *get_total_start_times_sensor() const { return this->total_start_times_sensor_; }
   sensor::Sensor *get_battery_voltage_sensor() const { return this->battery_voltage_sensor_; }
+  sensor::Sensor *get_charge_voltage_sensor() const { return this->charge_voltage_sensor_; }
+  sensor::Sensor *get_phase_a_current_sensor() const { return this->phase_a_current_sensor_; }
+  sensor::Sensor *get_phase_b_current_sensor() const { return this->phase_b_current_sensor_; }
+  sensor::Sensor *get_phase_a_active_power_sensor() const { return this->phase_a_active_power_sensor_; }
+  sensor::Sensor *get_phase_b_active_power_sensor() const { return this->phase_b_active_power_sensor_; }
+  sensor::Sensor *get_gen_voltage_ab_sensor() const { return this->gen_voltage_ab_sensor_; }
+  sensor::Sensor *get_gen_voltage_bc_sensor() const { return this->gen_voltage_bc_sensor_; }
+  sensor::Sensor *get_gen_voltage_ca_sensor() const { return this->gen_voltage_ca_sensor_; }
+  sensor::Sensor *get_total_active_power_sensor() const { return this->total_active_power_sensor_; }
+  sensor::Sensor *get_reactive_power_sensor() const { return this->reactive_power_sensor_; }
+  sensor::Sensor *get_apparent_power_sensor() const { return this->apparent_power_sensor_; }
+  sensor::Sensor *get_power_factor_sensor() const { return this->power_factor_sensor_; }
   sensor::Sensor *get_output_load_percent_sensor() const { return this->output_load_percent_sensor_; }
   sensor::Sensor *get_engine_running_status_sensor() const { return this->engine_running_status_sensor_; }
 
@@ -229,6 +249,7 @@ class SmartgenHSC941 : public PollingComponent {
   int tx_pin_{-1};
   int rx_pin_{-1};
   int flow_control_pin_{-1};
+  bool rs485_hw_mode_{false};
   int uart_num_{1};
   uart_port_t uart_port_{UART_NUM_1};
   SemaphoreHandle_t bus_mutex_{nullptr};
@@ -254,6 +275,19 @@ class SmartgenHSC941 : public PollingComponent {
   // Communication state
   uint8_t comm_failures_{0};
   static const uint8_t MAX_FAILURES = 5;
+
+  // Background polling task
+  TaskHandle_t poll_task_{nullptr};
+  volatile bool poll_data_ready_{false};
+  volatile bool poll_success_{false};
+  uint8_t poll_coil_data_[16]{};
+  size_t poll_coil_data_len_{0};
+  uint16_t poll_reg_data_[64]{};
+  bool poll_coils_ok_{false};
+  bool poll_regs_ok_{false};
+  static void poll_task_func_(void *arg);
+  void do_poll_();
+  void process_poll_results_();
 
   // ===== SENSOR POINTERS =====
   sensor::Sensor *gen_voltage_a_sensor_{nullptr};

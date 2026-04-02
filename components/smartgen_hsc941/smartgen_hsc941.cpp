@@ -72,6 +72,27 @@ void SmartgenHSC941::init_uart_() {
 
   esp_err_t err;
 
+  // In RS485 hardware mode, configure RX pin with pull-up before UART takes it over.
+  // Required for SP3485-style transceivers whose receiver output floats without it.
+  if (this->rs485_hw_mode_ && this->rx_pin_ >= 0) {
+    gpio_config_t io_conf = {};
+    io_conf.pin_bit_mask = (1ULL << this->rx_pin_);
+    io_conf.mode = GPIO_MODE_INPUT;
+    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
+    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    io_conf.intr_type = GPIO_INTR_DISABLE;
+    gpio_config(&io_conf);
+    ESP_LOGD(TAG, "RX pin %d configured with pull-up for RS485", this->rx_pin_);
+  }
+
+  // Install driver first (matches working RS485 init order for P4)
+  err = uart_driver_install(this->uart_port_, 256, 256, 0, nullptr, 0);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "uart_driver_install failed: %s", esp_err_to_name(err));
+    this->mark_failed();
+    return;
+  }
+
   err = uart_param_config(this->uart_port_, &uart_config);
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "uart_param_config failed: %s", esp_err_to_name(err));
@@ -82,20 +103,27 @@ void SmartgenHSC941::init_uart_() {
   err = uart_set_pin(this->uart_port_, this->tx_pin_, this->rx_pin_,
                      UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
   if (err != ESP_OK) {
-    ESP_LOGE(TAG, "uart_set_pin failed: %s", esp_err_to_name(err));
-    this->mark_failed();
-    return;
-  }
-
-  err = uart_driver_install(this->uart_port_, 256, 256, 0, nullptr, 0);
-  if (err != ESP_OK) {
     ESP_LOGE(TAG, "uart_driver_install failed: %s", esp_err_to_name(err));
     this->mark_failed();
     return;
   }
 
-  // Configure flow control pin if specified
-  if (this->flow_control_pin_ >= 0) {
+  // Configure RS485 mode
+  if (this->rs485_hw_mode_) {
+    // Hardware RS485: use collision-detection mode which works on boards with
+    // built-in RS485 transceivers that handle direction control automatically
+    // (e.g. ESP32-P4 Waveshare). This mode suppresses TX echo on the RX line.
+    err = uart_set_mode(this->uart_port_, UART_MODE_RS485_HALF_DUPLEX);
+    if (err != ESP_OK) {
+      ESP_LOGE(TAG, "uart_set_mode RS485 failed: %s", esp_err_to_name(err));
+      this->mark_failed();
+      return;
+    }
+    // Flush RX after TX to discard echo bytes from half-duplex transceiver
+    uart_flush_input(this->uart_port_);
+    ESP_LOGI(TAG, "RS485 hardware half-duplex mode enabled");
+  } else if (this->flow_control_pin_ >= 0) {
+    // Software flow control: manually toggle a GPIO pin for DE/RE direction.
     gpio_config_t io_conf = {};
     io_conf.pin_bit_mask = (1ULL << this->flow_control_pin_);
     io_conf.mode = GPIO_MODE_OUTPUT;
@@ -131,6 +159,21 @@ void SmartgenHSC941::setup() {
   if (!this->bus_mutex_) {
     ESP_LOGE(TAG, "Failed to create bus mutex");
     this->mark_failed();
+    return;
+  }
+
+  // Create background polling task (runs Modbus I/O off the main loop)
+  BaseType_t ret = xTaskCreatePinnedToCore(
+      poll_task_func_, "modbus_poll", 4096, this,
+      1,  // priority (low — main loop is higher)
+      &this->poll_task_,
+      1   // core 1 (keep main loop on core 0)
+  );
+  if (ret != pdPASS) {
+    ESP_LOGW(TAG, "Failed to create poll task — falling back to synchronous polling");
+    this->poll_task_ = nullptr;
+  } else {
+    ESP_LOGI(TAG, "Background Modbus polling task started on core 1");
   }
 }
 
@@ -141,7 +184,9 @@ void SmartgenHSC941::dump_config() {
   ESP_LOGCONFIG(TAG, "  TX Pin: %d", this->tx_pin_);
   ESP_LOGCONFIG(TAG, "  RX Pin: %d", this->rx_pin_);
   ESP_LOGCONFIG(TAG, "  UART Num: %d", this->uart_num_);
-  if (this->flow_control_pin_ >= 0)
+  if (this->rs485_hw_mode_)
+    ESP_LOGCONFIG(TAG, "  RS485: Hardware half-duplex mode");
+  else if (this->flow_control_pin_ >= 0)
     ESP_LOGCONFIG(TAG, "  Flow Control Pin: %d", this->flow_control_pin_);
   else
     ESP_LOGCONFIG(TAG, "  Flow Control: Auto (no DE/RE pin)");
@@ -191,6 +236,11 @@ bool SmartgenHSC941::send_and_receive_locked_(uint8_t *request, size_t req_len,
 
   // Switch to receive mode
   this->set_flow_control_(false);
+
+  // In hardware RS485 mode, flush any TX echo bytes from the RX buffer
+  if (this->rs485_hw_mode_) {
+    uart_flush_input(this->uart_port_);
+  }
 
   // Small inter-frame delay
   vTaskDelay(pdMS_TO_TICKS(INTER_FRAME_DELAY_MS));
@@ -754,50 +804,91 @@ void SmartgenHSC941::process_register_data_(const uint16_t *data,
 }
 
 // ============================================================
-//  Update (called every polling interval)
+//  Background poll task — runs Modbus I/O off the main loop
 // ============================================================
-void SmartgenHSC941::update() {
+void SmartgenHSC941::poll_task_func_(void *arg) {
+  auto *self = static_cast<SmartgenHSC941 *>(arg);
+  for (;;) {
+    // Wait until update() signals us
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    self->do_poll_();
+    self->poll_data_ready_ = true;
+  }
+}
+
+void SmartgenHSC941::do_poll_() {
   ESP_LOGD(TAG, "Polling SmartGen HSC941 at address %u...", this->address_);
 
-  bool any_success = false;
+  this->poll_coils_ok_ = false;
+  this->poll_regs_ok_ = false;
 
   // ---- Read Coils (Function Code 01H) ----
-  // Read coils 0-87 in one request (88 coils = 11 bytes)
   {
-    uint8_t coil_data[16] = {0};
-    size_t data_len = 0;
-    // Read 88 coils starting from address 0
-    if (this->read_coils_(0, 88, coil_data, &data_len)) {
-      ESP_LOGD(TAG, "Read %zu bytes of coil data", data_len);
-      this->process_coil_data_(coil_data, data_len, 0, 88);
-      any_success = true;
+    this->poll_coil_data_len_ = 0;
+    memset(this->poll_coil_data_, 0, sizeof(this->poll_coil_data_));
+    if (this->read_coils_(0, 88, this->poll_coil_data_, &this->poll_coil_data_len_)) {
+      ESP_LOGD(TAG, "Read %zu bytes of coil data", this->poll_coil_data_len_);
+      this->poll_coils_ok_ = true;
     } else {
       ESP_LOGW(TAG, "Failed to read coils 0-87");
     }
-
-    // Small delay between requests
     vTaskDelay(pdMS_TO_TICKS(INTER_FRAME_DELAY_MS));
   }
 
   // ---- Read Holding Registers (Function Code 03H) ----
-  // Read registers 0x0007 to 0x0041 (59 registers) in one batch
-  // This covers all data from Gen UA (0x0007) to Release Day (0x0041)
   {
+    memset(this->poll_reg_data_, 0, sizeof(this->poll_reg_data_));
     const uint16_t reg_start = 0x0007;
     const uint16_t reg_count = 0x0041 - 0x0007 + 1;  // 59 registers
-    uint16_t reg_data[64] = {0};
-
-    if (this->read_holding_registers_(reg_start, reg_count, reg_data)) {
+    if (this->read_holding_registers_(reg_start, reg_count, this->poll_reg_data_)) {
       ESP_LOGD(TAG, "Read %u holding registers starting at 0x%04X", reg_count, reg_start);
-      this->process_register_data_(reg_data, reg_start, reg_count);
-      any_success = true;
+      this->poll_regs_ok_ = true;
     } else {
       ESP_LOGW(TAG, "Failed to read holding registers 0x%04X-0x%04X", reg_start, reg_start + reg_count - 1);
     }
   }
 
+  this->poll_success_ = this->poll_coils_ok_ || this->poll_regs_ok_;
+}
+
+// ============================================================
+//  Update — triggers background poll (non-blocking)
+// ============================================================
+void SmartgenHSC941::update() {
+  if (this->poll_task_) {
+    // Signal the background task to start polling
+    xTaskNotifyGive(this->poll_task_);
+  } else {
+    // No background task — poll synchronously (fallback)
+    this->do_poll_();
+    this->poll_data_ready_ = true;
+  }
+}
+
+// ============================================================
+//  Loop — process results from background poll on main thread
+// ============================================================
+void SmartgenHSC941::loop() {
+  if (!this->poll_data_ready_)
+    return;
+  this->poll_data_ready_ = false;
+
+  this->process_poll_results_();
+}
+
+void SmartgenHSC941::process_poll_results_() {
+  if (this->poll_coils_ok_) {
+    this->process_coil_data_(this->poll_coil_data_, this->poll_coil_data_len_, 0, 88);
+  }
+
+  if (this->poll_regs_ok_) {
+    const uint16_t reg_start = 0x0007;
+    const uint16_t reg_count = 0x0041 - 0x0007 + 1;
+    this->process_register_data_(this->poll_reg_data_, reg_start, reg_count);
+  }
+
   // Track communication health
-  if (any_success) {
+  if (this->poll_success_) {
     this->comm_failures_ = 0;
     this->status_clear_warning();
   } else {
